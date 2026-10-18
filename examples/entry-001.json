@@ -1,0 +1,19 @@
+{
+  "id": "entry-001",
+  "createdAt": "2026-10-18T10:30:00Z",
+  "bodyPoints": [
+    {
+      "view": "front",
+      "x": 42,
+      "y": 28,
+      "region": "left_shoulder",
+      "intensity": 7,
+      "sensations": ["burning", "stabbing"]
+    }
+  ],
+  "duration": "hours",
+  "triggers": ["movement"],
+  "associatedSymptoms": ["tingling"],
+  "dailyImpact": ["sleeping", "concentration"],
+  "notes": "Example patient entry"
+}
