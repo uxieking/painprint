@@ -9,7 +9,7 @@ Pain is invisible. At the doctor's office patients often forget, downplay – or
 Try it in 1 minute:
 1. **Home** – check in (“How are you today?”) and tap **New entry**.
 2. **Track** – tap a body part (e.g. the jaw or the lower back) to zoom in, pick a pain level 1–10 and **Draw**. Use **Front / Back** to turn the body around.
-3. Open **Pain details** – set when it happened, why, sensations, duration and triggers.
+3. Open **Pain details** – when it happened, sensations, duration, pattern, possible triggers and daily-life impact (0–10 per activity).
 4. **History** – see the pain trend (7D/30D/90D), the diary timeline and patterns; **Download PDF** for your doctor.
 
 ## Features
@@ -22,6 +22,15 @@ Try it in 1 minute:
 - **Report / PDF** – between-visits summary, full body map, enlarged regions and a chronological pain diary
 - **Private by design** – everything stays on the device; JSON export/import for sharing
 - Accidental-mark protection: Move mode never draws, two fingers always zoom, stylus palm rejection
+- **Point marker** for very localized pain and **Mark whole area** as an accessible alternative to freehand drawing; labels on every marking; zoom 1×–8×
+- **76 anatomical regions** incl. eyes, ears, jaw, elbows, wrists, fingers, hips, ankles and toes – each side selectable
+- **Pattern**, grouped **possible triggers** (recorded as observations, never as causes) and **daily-life impact rated 0–10 per activity**
+- **History filters** (period, body area, symptom, intensity, trigger) and charts for intensity, entry frequency and daily-life impact – labelled as patient-reported
+- **Safety Center** (disclaimer, worsening symptoms, emergency guidance without assuming any country's emergency number), **Privacy Center** (storage, collection, sharing, export, deletion), **Settings** (date format, clock, opacity) and **About**
+- **5-step onboarding** and a clearly labelled **demo mode** with fictional data
+- International: English UI, timestamps stored in UTC with time zone, dates in English with the device's regional format
+
+> PAINPRINT is a documentation and communication tool – not a diagnostic or treatment platform. This demo uses fictional data only.
 
 ## Run
 ```

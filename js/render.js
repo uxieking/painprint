@@ -48,6 +48,11 @@
     if (sh.kind === 'area') {
       return `<path d="${G.smoothPath(sh.points, true)}" fill="${color}" fill-opacity="${0.32 * opacity}" stroke="${color}" stroke-opacity="${0.9 * opacity}" stroke-width="${r2(w)}" stroke-linejoin="round"/>`;
     }
+    if (sh.kind === 'point') {
+      // Point marker for very localized pain: a solid dot with a soft halo
+      const [x, y] = sh.points[0];
+      return `<g opacity="${opacity}"><circle cx="${r2(x)}" cy="${r2(y)}" r="${r2(w * 1.9)}" fill="${color}" fill-opacity=".22" stroke="${color}" stroke-width="${r2(w * 0.22)}"/><circle cx="${r2(x)}" cy="${r2(y)}" r="${r2(w * 0.75)}" fill="${color}"/></g>`;
+    }
     if (sh.kind === 'arrow') {
       const a = arrowParts(sh.points, w);
       const head = 'M' + a.head.map((p) => r2(p[0]) + ' ' + r2(p[1])).join('L') + 'Z';

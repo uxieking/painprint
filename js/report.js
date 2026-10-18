@@ -5,7 +5,7 @@
   const G = PP.geom, B = PP.body, R = PP.render;
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmtDate = (iso) => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); };
+  const fmtDate = (iso) => (iso ? PP.ui.fmtDateTime(iso) || esc(iso) : '–');
   const intensityColor = (i) => PP.vocab.levelColor(i);
   const intensityText = (i) => PP.vocab.levelText(i);
 
@@ -52,12 +52,15 @@
     return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => B.byId[id]).filter(Boolean);
   }
 
-  function build(lists) {
+  /** @param {{days?: number}} opts  days = reporting period (0 = all entries) */
+  function build(opts = {}) {
     const S = PP.store, d = S.data;
+    const days = +opts.days || 0, since = days ? Date.now() - days * 864e5 : -Infinity;
     // Chronological: the report reads like the diary the patient kept between visits
-    const all = d.entries.filter(hasContent).sort((a, b) => new Date(a.occurredAt) - new Date(b.occurredAt));
+    const all = d.entries.filter((e) => hasContent(e) && new Date(e.occurredAt) >= since).sort((a, b) => new Date(a.occurredAt) - new Date(b.occurredAt));
+    const DISCLAIMER = 'This report contains patient-reported information and is not a medical diagnosis or clinical assessment.';
     const num = (e) => all.indexOf(e) + 1;
-    const fmtDay = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const fmtDay = (iso) => PP.ui.fmtDate(iso);
 
     // Between-visits summary
     let summary = '';
@@ -68,15 +71,16 @@
       const trig = new Map();
       all.forEach((e) => e.triggers.forEach((t) => trig.set(t, (trig.get(t) || 0) + 1)));
       const topTrig = [...trig.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => V.label('triggers', t)).join(', ');
-      summary = `<h2>Between visits</h2>
+      summary = `<h2>Summary of the period</h2>
         <p style="margin:0 0 10px;color:var(--muted);font-size:13px">${fmtDay(all[0].occurredAt)} – ${fmtDay(all[all.length - 1].occurredAt)} · logged by the patient when the pain happened, not recalled at the appointment.</p>
         <div class="rp-stats"><div><b>${all.length}</b><span>episodes</span></div><div><b>${avg}</b><span>average level</span></div>
-        <div><b style="color:${intensityColor(worst)}">${worst}/10</b><span>worst level</span></div><div><b style="font-size:14px">${esc(topTrig || '–')}</b><span>top triggers</span></div></div>`;
+        <div><b style="color:${intensityColor(worst)}">${worst}/10</b><span>worst level</span></div><div><b style="font-size:14px">${esc(topTrig || '–')}</b><span>most noted possible triggers</span></div></div>`;
     }
-    const timeline = all.length ? `<h2>Pain diary</h2><div class="tl-wrap"><table class="tl"><thead><tr><th>#</th><th>When</th><th>Where</th><th>Level</th><th>How it felt</th><th>Why / context</th></tr></thead><tbody>${all.map((e) => {
+    const timeline = all.length ? `<h2>Pain diary</h2><div class="tl-wrap"><table class="tl"><thead><tr><th>#</th><th>When</th><th>Where</th><th>Level</th><th>How it felt</th><th>Impact</th><th>Noted triggers / context</th></tr></thead><tbody>${all.map((e) => {
       const regs = regionList(e).slice(0, 3).map((r) => r.name + (r.view === 'back' ? ' (back)' : '')).join(', ');
-      const why = [e.context, V.labels('triggers', e.triggers).join(', ')].filter(Boolean).join(' · ');
-      return `<tr><td><b>${num(e)}</b></td><td>${fmtDate(e.occurredAt)}</td><td>${esc(regs || '–')}</td><td><span class="lv" style="background:${intensityColor(e.intensity)}">${e.intensity}</span></td><td>${esc(V.labels('sensations', e.sensations).join(', ') || '–')}</td><td>${esc(why || '–')}</td></tr>`;
+      const why = [V.labels('triggers', e.triggers).join(', '), e.otherTriggers, e.context].filter(Boolean).join(' · ');
+      const imp = Object.entries(e.impactScores || {}).map(([k, v]) => `${V.label('dailyImpact', k)} ${v}`).join(', ');
+      return `<tr><td><b>${num(e)}</b></td><td>${fmtDate(e.occurredAt)}</td><td>${esc(regs || '–')}</td><td><span class="lv" style="background:${intensityColor(e.intensity)}">${e.intensity}</span></td><td>${esc(V.labels('sensations', e.sensations).join(', ') || '–')}</td><td>${esc(imp || '–')}</td><td>${esc(why || '–')}</td></tr>`;
     }).join('')}</tbody></table></div>` : '';
     const W = B.WORLD;
 
@@ -94,12 +98,12 @@
     const usedLevels = [...new Set(all.flatMap((e) => e.shapes.map((s) => s.level).filter(Boolean)))].sort((a, b) => a - b);
     const legend = usedLevels.length ? '<span><b>Pain level:</b></span>' + usedLevels.map((l) => `<span><i style="background:${PP.vocab.levelColor(l)}"></i>${l}/10</span>`).join('') : '';
     const kinds = new Set(all.flatMap((e) => e.shapes.map((s) => s.kind)));
-    const kindLegend = [kinds.has('stroke') && 'line = pain site', kinds.has('area') && 'shaded area = pain area', kinds.has('arrow') && 'arrow = radiation / direction'].filter(Boolean).join(' · ');
+    const kindLegend = [kinds.has('stroke') && 'line = pain site', kinds.has('area') && 'shaded area = pain area', kinds.has('arrow') && 'arrow = radiation / direction', kinds.has('point') && 'dot = exact point'].filter(Boolean).join(' · ');
 
     // Entries
     const entriesHTML = all.map((e) => {
       const regs = regionList(e);
-      const counts = { stroke: 0, area: 0, arrow: 0 };
+      const counts = { stroke: 0, area: 0, arrow: 0, point: 0 };
       e.shapes.forEach((s) => counts[s.kind]++);
       const levels = [...new Set(e.shapes.map((s) => s.level).filter(Boolean))].sort((a, b) => b - a);
       const row = (k, v) => (v ? `<span>${k}</span><div>${v}</div>` : '');
@@ -110,17 +114,20 @@
           ${row('Drawn pain levels', levels.map((l) => `<span style="color:${PP.vocab.levelColor(l)}">●</span> ${l}/10`).join(' &nbsp;'))}
           ${row('Sensations', esc(V.labels('sensations', e.sensations).join(', ')))}
           ${row('Duration', esc(e.duration ? V.label('duration', e.duration) : ''))}
-          ${row('Triggers', esc(V.labels('triggers', e.triggers).join(', ')))}
-          ${row('Associated symptoms', esc(V.labels('associatedSymptoms', e.associatedSymptoms).join(', ')))}
-          ${row('Daily impact', esc(V.labels('dailyImpact', e.dailyImpact).join(', ')))}
+          ${row('Pattern', esc(V.labels('pattern', e.pattern).join(', ')))}
+          ${row('Associated symptoms', esc([V.labels('associatedSymptoms', e.associatedSymptoms.filter((c) => c !== 'other')).join(', '), e.otherSymptoms].filter(Boolean).join(' · ')))}
+          ${row('Possible triggers (noted by patient)', esc([V.labels('triggers', e.triggers).join(', '), e.otherTriggers].filter(Boolean).join(' · ')))}
+          ${row('Daily-life impact (0–10)', e.dailyImpact.map((c) => `${esc(V.label('dailyImpact', c))}${typeof (e.impactScores || {})[c] === 'number' ? ` <b>${e.impactScores[c]}</b>` : ''}`).join(', '))}
+          ${row('Impact in own words', esc(e.impactNotes))}
           ${row('Description', esc(e.symptomNotes))}
           ${row('Location', esc(regs.map((r) => `${r.name} (${B.VIEW_NAMES[r.view].toLowerCase()})`).join(', ')))}
           ${row('Individual points', pointNotes(e).map(esc).join('<br>'))}
-          ${row('Drawings', [counts.stroke && `${counts.stroke} line${counts.stroke > 1 ? 's' : ''}`, counts.area && `${counts.area} area${counts.area > 1 ? 's' : ''}`, counts.arrow && `${counts.arrow} arrow${counts.arrow > 1 ? 's' : ''}`].filter(Boolean).join(', '))}
-          ${row('Why / context', esc(e.context))}
+          ${row('Drawings', [counts.stroke && `${counts.stroke} line${counts.stroke > 1 ? 's' : ''}`, counts.area && `${counts.area} area${counts.area > 1 ? 's' : ''}`, counts.arrow && `${counts.arrow} arrow${counts.arrow > 1 ? 's' : ''}`, counts.point && `${counts.point} point${counts.point > 1 ? 's' : ''}`].filter(Boolean).join(', '))}
+          ${row('What the patient was doing', esc(e.context))}
+          ${row('Labels', esc(e.shapes.map((s) => s.label).filter(Boolean).join(', ')))}
           ${row('Problem first started', e.onset ? fmtDate(e.onset) : '')}
           ${row('Notes', esc(e.notes))}
-          <span>Happened</span><div><b>${fmtDate(e.occurredAt)}</b> · logged ${fmtDate(e.createdAt)}</div>
+          <span>Happened</span><div><b>${fmtDate(e.occurredAt)}</b>${e.timeZone ? ` (${esc(e.timeZone)})` : ''} · logged ${fmtDate(e.createdAt)}</div>
         </div></div>`;
     }).join('');
 
@@ -148,24 +155,29 @@
     const p = d.patient;
     return `
       <div class="rp-head">
-        <div><h1>PAIN<b>PRINT</b></h1><div style="color:var(--muted)">Pain map – patient report</div></div>
+        <div><h1>PAIN<b>PRINT</b> — Patient Symptom Report</h1><div style="color:var(--muted)">Make the Invisible Understandable.</div></div>
         <div class="rp-patient">
           ${p.name ? `<span>Patient</span><b>${esc(p.name)}</b>` : ''}
-          ${p.birthDate ? `<span>Date of birth</span><b>${esc(new Date(p.birthDate).toLocaleDateString('en-US'))}</b>` : ''}
-          <span>Generated</span><b>${fmtDate(new Date().toISOString())}</b>
+          ${d.settings && d.settings.country ? `<span>Country / region</span><b>${esc(d.settings.country)}</b>` : ''}
+          <span>Report created</span><b>${fmtDate(new Date().toISOString())}</b>
+          <span>Reporting period</span><b>${days ? `Last ${days} days` : 'All entries'}${all.length ? ` (${fmtDay(all[0].occurredAt)} – ${fmtDay(all[all.length - 1].occurredAt)})` : ''}</b>
+          <span>Times shown in</span><b>${esc(PP.ui.tzLabel())}</b>
           <span>Entries</span><b>${all.length}</b>
         </div>
       </div>
-      ${p.notes ? `<p style="margin-top:14px"><b>Note to clinician:</b> ${esc(p.notes)}</p>` : ''}
+      <div class="rp-disclaimer">${DISCLAIMER}</div>
+      ${d.demo ? '<div class="rp-demo">Demonstration report – all data is fictional.</div>' : ''}
+      ${p.notes ? `<p style="margin-top:14px"><b>Patient's message:</b> ${esc(p.notes)}</p>` : ''}
       ${summary}
       <h2>Full body</h2>
       ${all.length ? '' : '<p>No entries recorded.</p>'}
       <svg class="rp-full" viewBox="${W.x} ${W.y} ${W.w} ${W.h}">${full}</svg>
       <div class="legend">${legend}</div>
-      ${kindLegend ? `<div class="legend" style="color:var(--muted)">${kindLegend}. Numbers refer to the entries below.</div>` : ''}
+      ${kindLegend ? `<div class="legend" style="color:var(--muted)">${kindLegend}. Numbers refer to the entries below. Colors show the pain level the patient chose (visual aid only – not an indicator of urgency).</div>` : ''}
       ${regionsHTML ? `<h2>Enlarged regions</h2><div class="rp-regions">${regionsHTML}</div>` : ''}
       ${timeline}
       ${entriesHTML ? `<h2>Entry details</h2>${entriesHTML}` : ''}
+      <div class="rp-disclaimer">${DISCLAIMER}</div>
       <div class="foot">Front view: the patient's right side is shown on the left. Back view: the patient's left side is shown on the left.
       Drawings are stored as coordinates linked to anatomical regions (PAINPRINT data format v${d.schemaVersion}).</div>`;
   }

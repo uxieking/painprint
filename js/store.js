@@ -23,17 +23,32 @@
       id: uid('e'), title: '', intensity: 5, sensations: [], duration: '', triggers: [], associatedSymptoms: [],
       dailyImpact: [], symptomNotes: '', onset: '', notes: '', visible: true, createdAt: t, updatedAt: t, shapes: [],
       occurredAt: t, // when this pain episode happened (the diary time), editable by the patient
+      timeZone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(), // where the time was recorded
       context: '', // why / what the patient was doing
+      pattern: [], otherSymptoms: '', otherTriggers: '',
+      impactScores: {}, // activity code → 0 (no impact) … 10 (unable to do it)
+      impactNotes: '',
       intensityManual: false, // until the user moves the slider, intensity follows the highest level drawn
     };
   }
+
+  // Codes renamed when the vocabulary was aligned with the product spec
+  const RENAMED = {
+    numb: 'numbness', pressing: 'pressure', tender: 'sharp', cutting: 'sharp', lifting: 'exertion', movement: 'repetitive_movement',
+    touch: 'other', night: 'sleep', morning: 'lying_down', rest: 'lying_down', work: 'working', self_care: 'personal_care',
+    exercise_impact: 'exercise', driving: 'mobility', mood: 'social', stiffness: 'other', reduced_mobility: 'other',
+    redness: 'other', warmth: 'other', coldness: 'other', weeks_or_longer: 'weeks',
+  };
+  const renameAll = (a) => [...new Set((a || []).map((c) => RENAMED[c] || c))];
 
   function defaults() {
     return {
       app: 'PAINPRINT', schemaVersion: SCHEMA_VERSION,
       patient: { name: '', birthDate: '', notes: '' },
       painTypes: DEFAULT_TYPES.map((t) => ({ ...t })),
-      entries: [], activeEntryId: null, checkins: [], createdAt: nowISO(), updatedAt: nowISO(),
+      entries: [], activeEntryId: null, checkins: [], demo: false, onboarded: false,
+      settings: { dateStyle: 'auto', clock: 'auto', markOpacity: 0.9, country: '' },
+      createdAt: nowISO(), updatedAt: nowISO(),
     };
   }
 
@@ -43,9 +58,12 @@
     const out = { ...base, ...d, schemaVersion: SCHEMA_VERSION };
     delete out.regions; delete out.coordinateSystem; delete out.exportedAt;
     out.patient = { ...base.patient, ...(d.patient || {}) };
+    out.settings = { ...base.settings, ...(d.settings || {}) };
     if (!Array.isArray(out.painTypes) || !out.painTypes.length) out.painTypes = base.painTypes;
     out.entries = d.entries.map((e) => ({
       ...entryBase(), ...e, occurredAt: e.occurredAt || e.createdAt || nowISO(),
+      sensations: renameAll(e.sensations), triggers: renameAll(e.triggers), associatedSymptoms: renameAll(e.associatedSymptoms), dailyImpact: renameAll(e.dailyImpact),
+      impactScores: e.impactScores && typeof e.impactScores === 'object' ? e.impactScores : {},
       shapes: Array.isArray(e.shapes) ? e.shapes.filter((s) => s && Array.isArray(s.points) && s.points.length && PP.body.OFF[s.view] !== undefined) : [],
     }));
     out.checkins = Array.isArray(d.checkins) ? d.checkins.filter((c) => c && c.date && c.mood) : [];

@@ -41,6 +41,14 @@
     { key: 'face', group: 'face', views: ['front'], shapes: [E(200, 94, 34, 38)] },
     { key: 'jaw', pair: true, group: 'face', views: ['front'], shapes: [P([166, 96], [174, 100], [184, 114], [192, 126], [194, 131], [186, 130], [178, 123], [171, 113], [167, 104])] },
     { key: 'chin', group: 'face', views: ['front'], shapes: [E(200, 127, 11, 7)] },
+    // Finer joints and details drawn on top of the larger regions (topmost = hit first)
+    { key: 'eye', pair: true, group: 'face', views: ['front'], shapes: [E(186, 88, 8, 5)] },
+    { key: 'elbow', pair: true, group: 'arms', shapes: [E(112, 376, 18, 13)] },
+    { key: 'wrist', pair: true, group: 'arms', shapes: [E(107, 499, 15, 8)] },
+    { key: 'fingers', pair: true, group: 'hands', shapes: [P([94, 557], [124, 557], [123, 578], [117, 592], [109, 595], [101, 593], [94, 583], [92, 562]), P([91, 548], [84, 552], [78, 540], [79, 528], [85, 524], [91, 531])] },
+    { key: 'hip', pair: true, group: 'pelvis', shapes: [E(141, 492, 12, 24)] },
+    { key: 'ankle', pair: true, group: 'legs', shapes: [E(168, 905, 15, 9)] },
+    { key: 'toes', pair: true, group: 'feet', views: ['front'], shapes: [P([147, 950], [186, 950], [186, 958], [180, 968], [150, 968], [143, 960])] },
   ];
 
   const NAMES = {
@@ -62,6 +70,13 @@
     temple: { front: 'temple' },
     jaw: { front: 'jaw' },
     chin: { front: 'Chin' },
+    eye: { front: 'eye area' },
+    elbow: { front: 'elbow (inner)', back: 'elbow' },
+    wrist: { front: 'wrist', back: 'wrist (back)' },
+    fingers: { front: 'fingers', back: 'fingers (back)' },
+    hip: { front: 'hip', back: 'hip (back)' },
+    ankle: { front: 'ankle', back: 'ankle / Achilles' },
+    toes: { front: 'toes' },
   };
   const GROUP_NAMES = {
     head: 'Head', face: 'Face', neck: 'Neck', shoulders: 'Shoulders', arms: 'Arms', hands: 'Hands',

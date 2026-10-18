@@ -3,33 +3,42 @@
   'use strict';
   const PP = (window.PP = window.PP || {});
 
-  const list = (pairs) => pairs.map(([code, label]) => ({ code, label }));
+  const list = (pairs, group) => pairs.map(([code, label]) => ({ code, label, group }));
 
   const V = {
     sensations: list([
-      ['burning', 'Burning'], ['stabbing', 'Stabbing'], ['aching', 'Aching'], ['throbbing', 'Throbbing'],
-      ['shooting', 'Shooting'], ['tingling', 'Tingling'], ['numb', 'Numb'], ['cramping', 'Cramping'],
-      ['pressing', 'Pressing'], ['electric', 'Electric'], ['cutting', 'Cutting'], ['tender', 'Tender to touch'],
+      ['burning', 'Burning'], ['stabbing', 'Stabbing'], ['sharp', 'Sharp'], ['dull', 'Dull'], ['aching', 'Aching'],
+      ['throbbing', 'Throbbing'], ['shooting', 'Shooting'], ['electric', 'Electric shock-like'], ['pressure', 'Pressure'],
+      ['cramping', 'Cramping'], ['tingling', 'Tingling'], ['numbness', 'Numbness'], ['tightness', 'Tightness'], ['other', 'Other'],
     ]),
     duration: list([
-      ['seconds', 'Seconds'], ['minutes', 'Minutes'], ['hours', 'Hours'], ['days', 'Days'],
-      ['weeks', 'Weeks or longer'], ['constant', 'Constant'],
+      ['seconds', 'Seconds'], ['minutes', 'Minutes'], ['hours', 'Hours'], ['days', 'Days'], ['weeks', 'Weeks'],
+      ['months', 'Months'], ['constant', 'Constant'], ['intermittent', 'Intermittent'],
     ]),
-    triggers: list([
-      ['movement', 'Movement'], ['rest', 'Rest'], ['sitting', 'Sitting'], ['standing', 'Standing'], ['walking', 'Walking'],
-      ['lifting', 'Lifting'], ['touch', 'Touch'], ['stress', 'Stress'], ['cold', 'Cold'], ['heat', 'Heat'],
-      ['night', 'At night'], ['morning', 'In the morning'],
+    pattern: list([
+      ['sudden_onset', 'Sudden onset'], ['gradual_onset', 'Gradual onset'], ['constant', 'Constant'], ['recurring', 'Recurring'],
+      ['increasing', 'Increasing'], ['decreasing', 'Decreasing'], ['fluctuating', 'Fluctuating'],
     ]),
+    // Potential triggers are things the patient *noticed* – never presented as causes.
+    triggers: [
+      ...list([['walking', 'Walking'], ['standing', 'Standing'], ['sitting', 'Sitting'], ['lying_down', 'Lying down'], ['exercise', 'Exercise'],
+        ['repetitive_movement', 'Repetitive movement'], ['exertion', 'Physical exertion']], 'Physical'),
+      ...list([['heat', 'Heat'], ['cold', 'Cold'], ['humidity', 'Humidity'], ['weather', 'Weather changes'], ['bright_light', 'Bright light'],
+        ['noise', 'Noise']], 'Environmental'),
+      ...list([['sleep', 'Sleep'], ['stress', 'Stress'], ['food', 'Food'], ['hydration', 'Hydration'], ['daily_activities', 'Daily activities']], 'Lifestyle'),
+      ...list([['medication', 'Medication'], ['travel', 'Travel'], ['unknown', 'Unknown']], 'Other'),
+    ],
     associatedSymptoms: list([
-      ['tingling', 'Tingling'], ['numbness', 'Numbness'], ['stiffness', 'Stiffness'], ['swelling', 'Swelling'],
-      ['weakness', 'Weakness'], ['redness', 'Redness'], ['warmth', 'Warmth'], ['coldness', 'Coldness'],
-      ['reduced_mobility', 'Reduced mobility'], ['headache', 'Headache'], ['nausea', 'Nausea'],
-      ['dizziness', 'Dizziness'], ['fatigue', 'Fatigue'],
+      ['dizziness', 'Dizziness'], ['nausea', 'Nausea'], ['fatigue', 'Fatigue'], ['weakness', 'Weakness'], ['numbness', 'Numbness'],
+      ['tingling', 'Tingling'], ['tinnitus', 'Tinnitus'], ['headache', 'Headache'], ['vision_changes', 'Vision changes'],
+      ['light_sensitivity', 'Sensitivity to light'], ['sound_sensitivity', 'Sensitivity to sound'], ['sleep_disturbance', 'Sleep disturbances'],
+      ['balance', 'Balance difficulties'], ['swelling', 'Swelling'], ['other', 'Other'],
     ]),
     dailyImpact: list([
-      ['sleeping', 'Sleeping'], ['concentration', 'Concentration'], ['work', 'Work / school'], ['walking', 'Walking'],
-      ['exercise', 'Exercise'], ['household', 'Household chores'], ['self_care', 'Self-care'], ['driving', 'Driving'],
-      ['social', 'Social life'], ['mood', 'Mood'],
+      ['walking', 'Walking'], ['standing', 'Standing'], ['sitting', 'Sitting'], ['sleeping', 'Sleeping'], ['eating', 'Eating'],
+      ['drinking', 'Drinking'], ['concentration', 'Concentration'], ['working', 'Working'], ['studying', 'Studying'],
+      ['communication', 'Communication'], ['social', 'Social activities'], ['personal_care', 'Personal care'],
+      ['household', 'Household activities'], ['mobility', 'Mobility'], ['other', 'Other'],
     ]),
   };
 

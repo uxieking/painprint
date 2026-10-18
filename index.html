@@ -42,9 +42,10 @@
           </svg>
           <div class="hero-top">
             <div class="logo-lg"><span class="logo-figure" aria-hidden="true"></span>PAINPRINT</div>
-            <button class="icon-btn glass" id="btnSettings" aria-label="Settings and data" aria-haspopup="true" data-icon="gear"></button>
+            <button class="icon-btn glass" id="btnSettings" aria-label="Settings" data-icon="gear"></button>
           </div>
-          <p class="tagline">Make the invisible understandable.</p>
+          <p class="tagline">Make the Invisible Understandable.</p>
+          <span class="demo-badge" id="demoBadge" hidden>DEMO · fictional data</span>
         </header>
         <div class="home-body">
           <div class="card mood-card">
@@ -53,6 +54,16 @@
           </div>
           <div class="card latest" id="latestCard"></div>
           <button class="cta" id="btnNewEntry" type="button" data-icon="plus"><span>New entry</span></button>
+          <div class="quick">
+            <button type="button" data-go="history" data-icon="history"><span>History</span></button>
+            <button type="button" data-go="report" data-icon="report"><span>Report</span></button>
+            <button type="button" data-more="safety" data-icon="shield"><span>Safety</span></button>
+            <button type="button" data-more="privacy" data-icon="lock"><span>Privacy</span></button>
+          </div>
+          <div class="card safety-card">
+            <p><b>Not a diagnosis.</b> PAINPRINT helps you document and communicate symptoms. In an emergency, contact your local emergency services.</p>
+            <button type="button" class="link" data-more="safety">Safety information</button> · <button type="button" class="link" data-more="privacy">How your data is stored</button> · <button type="button" class="link" data-more="about">About</button>
+          </div>
         </div>
       </section>
 
@@ -96,12 +107,15 @@
               <button class="tool" data-tool="draw" title="Draw freehand (B)" data-icon="pen"><span>Draw</span></button>
               <button class="tool" data-tool="area" title="Circle an area (A)" data-icon="area"><span>Area</span></button>
               <button class="tool" data-tool="arrow" title="Arrow – pain that spreads (R)" data-icon="arrow"><span>Arrow</span></button>
+              <button class="tool" data-tool="point" title="Point – one exact spot (P)" data-icon="point"><span>Point</span></button>
               <button class="tool" data-tool="erase" title="Erase in this entry (E)" data-icon="eraser"><span>Erase</span></button>
               <button class="tool size" id="btnSize" title="Brush size"><i id="sizeDot"></i><span id="sizeLbl">M</span></button>
             </div>
             <div class="rail-group levels" id="levels" role="radiogroup" aria-label="Pain level 1 to 10"></div>
           </div>
+          <div class="zoom-pill" role="group" aria-label="Zoom"><button id="zoomOut" aria-label="Zoom out" title="Zoom out (−)">−</button><span id="zoomLbl" aria-live="polite">1.0×</span><button id="zoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button></div>
           <div class="t-bottom">
+            <button class="mark-all" id="btnMarkRegion" type="button" hidden>Mark whole area</button>
             <button class="hint" id="hint" type="button"></button>
             <button class="icon-btn round" id="btnUndo" aria-label="Undo" title="Undo (Ctrl+Z)" data-icon="undo"></button>
             <button class="icon-btn round" id="btnRedo" aria-label="Redo" title="Redo (Ctrl+Y)" data-icon="redo"></button>
@@ -132,6 +146,17 @@
             <div class="card">
               <div class="card-head"><h3>Pain trend</h3><div class="pills" id="rangePills"><button data-days="7">7D</button><button data-days="30" class="on">30D</button><button data-days="90">90D</button></div></div>
               <div id="trendChart" class="trend"></div>
+              <p class="chart-note">Patient-reported: the highest of each day's entries and check-in. Not a clinical measurement.</p>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Entries per week</h3><label class="sr-only" for="freqField">Show entries with</label><select id="freqField" class="mini-select"></select></div>
+              <div id="freqChart" class="trend"></div>
+              <p class="chart-note">How often you logged symptoms – optionally only entries with one symptom. Patient-reported.</p>
+            </div>
+            <div class="card">
+              <h3>Daily-life impact</h3>
+              <div id="impactChart" class="trend"></div>
+              <p class="chart-note">Average of your activity ratings per entry (0 = no impact, 10 = unable to do it). Patient-reported.</p>
             </div>
             <div class="card">
               <h3>Body map – latest entries</h3>
@@ -152,13 +177,31 @@
         <header class="page-head between">
           <div class="logo-md"><span class="logo-figure dark" aria-hidden="true"></span>Report</div>
           <div class="row-gap">
-            <button class="btn ghost" id="btnPatient" type="button">Patient details</button>
+            <label class="sr-only" for="reportPeriod">Reporting period</label>
+            <select id="reportPeriod" class="btn"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="0" selected>All entries</option></select>
+            <button class="btn" id="btnPrintOnly" type="button">Print</button>
             <button class="cta small" id="btnPrint" type="button">Download PDF</button>
           </div>
         </header>
         <div class="page-body report-host"><div id="report" class="report"></div></div>
       </section>
+      <!-- ============ SAFETY · PRIVACY · SETTINGS · ABOUT ============ -->
+      <section class="screen" data-screen="more" id="scr-more">
+        <header class="page-head between">
+          <button class="icon-btn" id="infoBack" aria-label="Back to Home" data-icon="back"></button>
+          <div class="logo-md"><span class="logo-figure dark" aria-hidden="true"></span>PAINPRINT</div>
+          <span style="width:40px"></span>
+        </header>
+        <div class="tabs four" id="infoTabs" role="tablist">
+          <button role="tab" data-sec="safety">Safety</button>
+          <button role="tab" data-sec="privacy">Privacy</button>
+          <button role="tab" data-sec="settings">Settings</button>
+          <button role="tab" data-sec="about">About</button>
+        </div>
+        <div class="page-body" id="infoBody"></div>
+      </section>
     </main>
+    <div id="onboarding" class="onboarding" hidden></div>
 
     <nav class="tabbar" id="tabbar" aria-label="Main">
       <button data-go="home" data-icon="home"><span>Home</span></button>
@@ -186,6 +229,7 @@
   <script src="js/track.js"></script>
   <script src="js/home.js"></script>
   <script src="js/history.js"></script>
+  <script src="js/info.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

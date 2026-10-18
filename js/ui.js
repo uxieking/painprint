@@ -13,6 +13,10 @@
     pen: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z',
     area: 'M12 3a9 9 0 0 1 0 18M12 21a9 9 0 0 1 0-18M3.5 9h.01M3 13h.01M5 17h.01M20.5 9h.01M21 13h.01M19 17h.01',
     arrow: 'M5 19 19 5M9 5h10v10',
+    point: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+    shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM12 8v5M12 16h.01',
+    lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+    info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 16v-5M12 8h.01',
     eraser: 'm7 21-4.3-4.3a2.4 2.4 0 0 1 0-3.4l9.6-9.6a2.4 2.4 0 0 1 3.4 0l5.6 5.6a2.4 2.4 0 0 1 0 3.4L13 21M22 21H7M5 11l9 9',
     undo: 'M3 7v6h6M21 17a9 9 0 0 0-15-6.7L3 13',
     redo: 'M21 7v6h-6M3 17a9 9 0 0 1 15-6.7l3 2.7',
@@ -38,9 +42,32 @@
   });
 
   // ---------- formatting ----------
-  const fmtDateTime = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
-  const fmtShort = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
-  const fmtTime = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); };
+  // Dates follow the user's preference (Settings) – default is the device's own regional format.
+  // Timestamps are always stored as ISO 8601 in UTC, so they are unambiguous worldwide.
+  const pref = () => (PP.store && PP.store.data && PP.store.data.settings) || {};
+  // "Device default" keeps the device's regional conventions (date order, 24 h clock) but always English
+  // words, e.g. a Norwegian device gets "18 Oct 2026, 10:20" instead of "18. okt. 2026".
+  let autoLoc = null;
+  const autoLocale = () => {
+    if (autoLoc) return autoLoc;
+    let region = '';
+    try { region = new Intl.Locale(navigator.language || 'en').maximize().region || ''; } catch (e) { /* old browser */ }
+    const cand = region ? 'en-' + region : 'en';
+    try { autoLoc = Intl.DateTimeFormat.supportedLocalesOf([cand]).length ? cand : 'en'; } catch (e) { autoLoc = 'en'; }
+    return autoLoc;
+  };
+  const locale = () => ({ us: 'en-US', uk: 'en-GB' }[pref().dateStyle] || autoLocale());
+  const hour12 = () => (pref().clock === '12' ? true : pref().clock === '24' ? false : undefined);
+  const pad = (n) => String(n).padStart(2, '0');
+  const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const isoTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const valid = (iso) => { const d = new Date(iso); return isNaN(d) ? null : d; };
+  const fmtTime = (iso) => { const d = valid(iso); if (!d) return ''; return pref().dateStyle === 'iso' && pref().clock !== '12' ? isoTime(d) : d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', hour12: hour12() }); };
+  const fmtDate = (iso) => { const d = valid(iso); if (!d) return ''; return pref().dateStyle === 'iso' ? isoDate(d) : d.toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' }); };
+  const fmtDateTime = (iso) => (valid(iso) ? `${fmtDate(iso)}, ${fmtTime(iso)}` : '');
+  const fmtShort = (iso) => { const d = valid(iso); if (!d) return ''; return pref().dateStyle === 'iso' ? isoDate(d).slice(5) : d.toLocaleDateString(locale(), { month: 'short', day: 'numeric' }); };
+  const fmtDay = (iso) => { const d = valid(iso); if (!d) return ''; return pref().dateStyle === 'iso' ? isoDate(d) : d.toLocaleDateString(locale(), { weekday: 'long', month: 'short', day: 'numeric' }); };
+  const tzLabel = () => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; const off = -new Date().getTimezoneOffset(); return `${tz} (UTC${off >= 0 ? '+' : '−'}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)})`; } catch (e) { return 'local time'; } };
   /** ISO → value for <input type="datetime-local"> in local time. */
   const toLocalInput = (iso) => { const d = new Date(iso || Date.now()); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
   const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
@@ -127,7 +154,7 @@
   }
 
   PP.ui = {
-    $, $$, esc, icon, applyIcons, fmtDateTime, fmtShort, fmtTime, toLocalInput, fromLocalInput, dayKey,
+    $, $$, esc, icon, applyIcons, fmtDateTime, fmtDate, fmtShort, fmtTime, fmtDay, tzLabel, toLocalInput, fromLocalInput, dayKey,
     moodFace, miniMapSVG, modal, toast, openPopover, closePopover, on, emit, download,
     levelColor: V.levelColor, levelText: V.levelText,
   };

@@ -40,46 +40,46 @@
     t = daysAgo(31, 19, 40);
     list.push(entry({
       title: 'Back pain after moving furniture', intensity: 8, intensityManual: true, occurredAt: t,
-      sensations: ['aching', 'stabbing'], duration: 'days', triggers: ['lifting'], associatedSymptoms: ['stiffness'],
-      dailyImpact: ['sleeping', 'work'], context: 'Carried boxes all afternoon while moving.', onset: onsetBack,
+      sensations: ['aching', 'sharp'], duration: 'days', pattern: ['sudden_onset'], triggers: ['exertion'], associatedSymptoms: ['other'], otherSymptoms: 'Stiffness',
+      dailyImpact: ['sleeping', 'working'], impactScores: { sleeping: 6, working: 7 }, context: 'Carried boxes all afternoon while moving.', onset: onsetBack,
     }, [backArea(8, t)]));
 
     t = daysAgo(27, 7, 10);
     list.push(entry({
       title: 'Morning stiffness, pain into leg', intensity: 7, occurredAt: t,
-      sensations: ['aching', 'shooting'], duration: 'hours', triggers: ['morning', 'sitting'], associatedSymptoms: ['stiffness', 'tingling'],
-      dailyImpact: ['walking', 'work'], context: 'Could barely get out of bed. Better after a hot shower.', onset: onsetBack,
+      sensations: ['aching', 'shooting'], duration: 'hours', pattern: ['recurring'], triggers: ['lying_down', 'sitting'], associatedSymptoms: ['tingling', 'other'], otherSymptoms: 'Morning stiffness',
+      dailyImpact: ['walking', 'working'], impactScores: { walking: 5, working: 6 }, context: 'Could barely get out of bed. Better after a hot shower.', onset: onsetBack,
     }, [backArea(6, t), legArrow(7, t, 700)]));
 
     t = daysAgo(18, 15, 30);
     list.push(entry({
       title: 'Migraine at work', intensity: 8, occurredAt: t,
-      sensations: ['throbbing', 'pressing'], duration: 'hours', triggers: ['stress'], associatedSymptoms: ['headache', 'nausea'],
-      dailyImpact: ['concentration', 'work'], context: 'Deadline week, skipped lunch, bright office lights.', onset: localInput(daysAgo(400, 12)),
+      sensations: ['throbbing', 'pressure'], duration: 'hours', pattern: ['gradual_onset', 'recurring'], triggers: ['stress', 'bright_light', 'food'], associatedSymptoms: ['headache', 'nausea', 'light_sensitivity'],
+      dailyImpact: ['concentration', 'working'], impactScores: { concentration: 8, working: 7 }, context: 'Deadline week, skipped lunch, bright office lights.', onset: localInput(daysAgo(400, 12)),
     }, [temple(6, t), eye(8, t)]));
 
     t = daysAgo(11, 22, 5);
     list.push(entry({
       title: 'Jaw pain at night', intensity: 4, occurredAt: t,
-      sensations: ['aching', 'tender'], duration: 'hours', triggers: ['night', 'stress'], associatedSymptoms: ['headache'],
-      dailyImpact: ['sleeping'], context: 'Woke up clenching my teeth.', onset: '',
+      sensations: ['aching', 'tightness'], duration: 'hours', pattern: ['recurring'], triggers: ['sleep', 'stress'], associatedSymptoms: ['headache'],
+      dailyImpact: ['sleeping', 'eating'], impactScores: { sleeping: 4, eating: 3 }, context: 'Woke up clenching my teeth.', onset: '',
     }, [jaw(4, t)]));
 
     t = daysAgo(3, 8, 0);
     list.push(entry({
       title: 'Lower back pain into left leg', intensity: 9, occurredAt: t,
-      sensations: ['aching', 'shooting', 'electric'], duration: 'constant', triggers: ['sitting', 'lifting', 'morning'],
-      associatedSymptoms: ['tingling', 'numbness', 'stiffness'], dailyImpact: ['sleeping', 'work', 'walking'],
+      sensations: ['aching', 'shooting', 'electric'], duration: 'constant', pattern: ['increasing'], triggers: ['sitting', 'travel', 'exertion'],
+      associatedSymptoms: ['tingling', 'numbness', 'balance'], dailyImpact: ['sleeping', 'working', 'walking', 'sitting'], impactScores: { sleeping: 7, working: 8, walking: 6, sitting: 9 },
       symptomNotes: 'Deep ache in the lower back. Shoots down the back of the left leg after sitting more than 20 minutes.',
       context: 'Long car drive the day before (5 hours).', onset: onsetBack,
-      notes: 'Ibuprofen helps for ~3 hours. Want to ask about a referral to physiotherapy.',
+      notes: 'Painkiller helps for ~3 hours. Want to ask about physiotherapy.',
     }, [backArea(7, t), legArrow(9, t), heel(4, t)]));
 
     t = daysAgo(0, 10, 20);
     list.push(entry({
       title: 'Left shoulder when lifting arm', intensity: 5, occurredAt: t,
-      sensations: ['burning', 'stabbing'], duration: 'minutes', triggers: ['movement', 'lifting'],
-      associatedSymptoms: ['reduced_mobility'], dailyImpact: ['sleeping', 'self_care'],
+      sensations: ['burning', 'stabbing'], duration: 'minutes', pattern: ['sudden_onset'], triggers: ['repetitive_movement', 'exertion'],
+      associatedSymptoms: ['weakness'], dailyImpact: ['sleeping', 'personal_care', 'household'], impactScores: { sleeping: 3, personal_care: 4, household: 5 },
       context: 'Reaching for the top shelf in the kitchen.', onset: localInput(daysAgo(10, 18)),
     }, [
       shape('stroke', 'front', 5, 6, [[262, 196], [270, 200], [278, 206], [284, 214], [288, 224]], t),
@@ -107,7 +107,9 @@
       S.data.entries = build();
       S.data.checkins = checkins();
       S.data.activeEntryId = S.data.entries[S.data.entries.length - 1].id;
-      S.data.patient = { name: 'Alex Sample', birthDate: '1988-04-12', notes: 'Sample patient – generated for the demo. Next appointment: back pain follow-up.' };
+      S.data.patient = { name: 'Demo patient (fictional)', birthDate: '', notes: 'Fictional demonstration data – not a real person.' };
+      S.data.demo = true;
+      S.data.onboarded = true;
     });
   }
 

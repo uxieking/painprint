@@ -2,13 +2,14 @@
 (function () {
   'use strict';
   const PP = window.PP, S = PP.store, X = PP.exchange;
-  const { $, $$, esc, applyIcons, modal, toast, openPopover, on, download } = PP.ui;
+  const { $, $$, esc, applyIcons, modal, toast, on, download } = PP.ui;
 
   applyIcons();
-  const SCREENS = ['home', 'track', 'history', 'report'];
+  const SCREENS = ['home', 'track', 'history', 'report', 'more'];
   let current = null;
 
   function go(screen, opts = {}) {
+    if (typeof screen === 'string' && screen.startsWith('more/')) { opts = { ...opts, section: screen.slice(5) }; screen = 'more'; }
     if (!SCREENS.includes(screen)) screen = 'home';
     PP.ui.closePopover();
     current = screen;
@@ -16,19 +17,26 @@
     $$('#tabbar button').forEach((b) => b.classList.toggle('on', b.dataset.go === screen));
     $('#tabbar').classList.toggle('dark', screen === 'track');
     document.querySelector('meta[name="theme-color"]').content = screen === 'track' ? '#0b1424' : '#f2f4f8';
-    if (location.hash !== '#' + screen) history.replaceState(null, '', '#' + screen);
+    const hash = '#' + screen + (screen === 'more' && opts.section ? '/' + opts.section : '');
+    if (location.hash !== hash) history.replaceState(null, '', hash);
     if (screen === 'home') PP.home.render();
     if (screen === 'track') PP.track.open(opts);
     if (screen === 'history') PP.history.render();
+    if (screen === 'more') PP.info.show(opts.section);
     if (screen === 'report') {
-      $('#report').innerHTML = PP.report.build();
+      $('#report').innerHTML = PP.report.build({ days: +$('#reportPeriod').value });
       $('#scr-report').scrollTop = 0;
-      if (opts.print) setTimeout(() => window.print(), 300);
+      if (opts.print) setTimeout(printPDF, 300);
     }
   }
   on('go', go);
   $$('#tabbar button').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
-  window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h !== current) go(h); });
+  window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h.split('/')[0] !== current || h.includes('/')) go(h); });
+  // Quick links anywhere: data-go="screen" and data-more="section"
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('#scr-home [data-go]'); if (g) { go(g.dataset.go); return; }
+    const m = e.target.closest('[data-more]'); if (m) go('more', { section: m.dataset.more });
+  });
 
   // Keep every screen in sync with the data
   function refresh() {
@@ -42,96 +50,59 @@
   // ---------- sample patient & welcome ----------
   function loadDemo() {
     PP.demo.load();
-    toast('Sample patient loaded – explore the Track, History and Report tabs');
+    toast('Fictional demo patient loaded – explore Track, History and Report');
     go(current || 'home');
   }
   on('demo', async () => {
     if (S.data.entries.length) {
-      const v = await modal({ title: 'Load sample patient?', body: '<p>The sample patient replaces your current entries. You can undo afterwards.</p>', buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Load sample', cls: 'primary' }] });
+      const v = await modal({ title: 'Load the demo patient?', body: '<p>The fictional demo patient replaces your current entries. You can undo afterwards.</p>', buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Load sample', cls: 'primary' }] });
       if (v !== 'ok') return;
     }
     loadDemo();
   });
 
-  function maybeWelcome() {
-    let seen = false;
-    try { seen = localStorage.getItem('painprint.welcomed') === '1'; } catch (e) { /* ignore */ }
-    if (seen || S.data.entries.length) return;
-    modal({
-      title: 'Welcome to PAINPRINT',
-      body: `<p>Pain is invisible – and at the doctor's it's easy to forget, downplay or overstate it. Log it <b>when it happens</b> instead:</p>
-        <ol class="help-list">
-          <li><b>Draw</b> exactly where it hurts – zoom in on a jaw, a temple or a finger.</li>
-          <li>Pick the <b>pain level 1–10</b> as your color (<span style="color:#f97316">9 orange</span>, <span style="color:#ef4444">10 red</span>).</li>
-          <li>Turn the body around with <b>Front / Back</b>.</li>
-          <li>Add <b>when</b> and <b>why</b> – then download a PDF for your doctor.</li>
-        </ol>
-        <p>Everything stays on this device. No account needed.</p>`,
-      buttons: [{ value: 'empty', label: 'Start empty' }, { value: 'demo', label: 'Try a sample patient', cls: 'primary' }],
-    }).then((v) => {
-      try { localStorage.setItem('painprint.welcomed', '1'); } catch (e) { /* ignore */ }
-      if (v === 'demo') loadDemo();
-    });
-  }
-
   // ---------- settings menu ----------
-  $('#btnSettings').addEventListener('click', () => {
-    openPopover($('#btnSettings'), `
-      <button data-v="demo">Load sample patient</button>
-      <button data-v="patient">Patient details</button>
-      <hr>
-      <button data-v="export">Export entries (JSON)</button>
-      <button data-v="import">Import entries / backup</button>
-      <button data-v="backup">Download full backup</button>
-      <hr>
-      <button data-v="help">How it works</button>
-      <button data-v="reset" class="danger">Delete all data</button>`, onMenu, 'right');
-  });
-  async function onMenu(act) {
-    if (act === 'demo') PP.ui.emit('demo');
-    if (act === 'patient') openPatientDialog();
-    if (act === 'export') download(JSON.stringify(X.exportFile(S.data), null, 2), 'painprint');
-    if (act === 'backup') download(S.exportJSON(), 'painprint-backup');
-    if (act === 'import') $('#fileImport').click();
-    if (act === 'help') openHelp();
-    if (act === 'reset') {
-      const v = await modal({ title: 'Delete all data?', body: '<p>All entries, drawings, check-ins and patient details are deleted from this device. This cannot be undone. Consider exporting first.</p>', buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Delete everything', cls: 'danger-fill' }] });
-      if (v === 'ok') { S.reset(); go('home'); }
-    }
-  }
+  $('#btnSettings').addEventListener('click', () => go('more', { section: 'settings' }));
+  on('patient', () => openPatientDialog());
+  on('help', () => openHelp());
+  on('loadDemo', () => loadDemo());
 
   function openPatientDialog() {
     const p = S.data.patient;
     modal({
-      title: 'Patient details',
+      title: 'Details on the report',
       body: `<p>Optional. Shown at the top of the report. Stored only on this device.</p>
-        <label class="fld"><span>Name</span><input type="text" id="pName" value="${esc(p.name)}" autocomplete="off"></label>
-        <label class="fld"><span>Date of birth</span><input type="date" id="pBirth" value="${esc(p.birthDate)}"></label>
-        <label class="fld"><span>Message to your doctor</span><textarea id="pNotes">${esc(p.notes)}</textarea></label>`,
+        <p><b>${esc(PP.info.TEXT.demo)}</b></p>
+        <label class="fld"><span>Name or label on the report</span><input type="text" id="pName" value="${esc(p.name)}" autocomplete="off" placeholder="E.g. a fictional name"></label>
+        <label class="fld"><span>Message to your healthcare professional</span><textarea id="pNotes">${esc(p.notes)}</textarea></label>`,
       buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Save', cls: 'primary' }],
       onOpen(d) {
         d.addEventListener('close', () => {
           if (d.returnValue !== 'ok') return;
-          p.name = $('#pName', d).value.trim(); p.birthDate = $('#pBirth', d).value; p.notes = $('#pNotes', d).value.trim();
+          p.name = $('#pName', d).value.trim(); p.notes = $('#pNotes', d).value.trim();
           S.save();
           if (current === 'report') go('report');
         }, { once: true });
       },
     });
   }
-  $('#btnPatient').addEventListener('click', openPatientDialog);
-  $('#btnPrint').addEventListener('click', () => window.print());
+  // "Download PDF" uses the browser's own print engine (Save as PDF) – nothing leaves the device.
+  function printPDF() { toast('Choose “Save as PDF” as the printer to download the report', 4000); setTimeout(() => window.print(), 400); }
+  $('#btnPrint').addEventListener('click', printPDF);
+  $('#btnPrintOnly').addEventListener('click', () => window.print());
+  $('#reportPeriod').addEventListener('change', () => go('report'));
 
   function openHelp() {
     modal({
       title: 'How PAINPRINT works',
       body: `<ul class="help-list">
         <li><b>Move</b> (hand): drag to pan, pinch or scroll to zoom, tap a body area to zoom in. Never draws.</li>
-        <li><b>Draw</b>, <b>Area</b> and <b>Arrow</b> draw in the selected pain-level color. Arrows show pain that spreads.</li>
+        <li><b>Draw</b>, <b>Area</b>, <b>Arrow</b> and <b>Point</b> use the selected pain-level color. Arrows show pain that spreads; Point marks one exact spot.</li>
+        <li>Can't draw precisely? Select a body area and tap <b>Mark whole area</b>, or choose the area from the title menu.</li>
         <li>Two fingers always zoom – a stroke in progress is cancelled. With a stylus, only the stylus draws.</li>
         <li><b>Front / Back</b> turns the body around – the zoomed area follows.</li>
         <li><b>Pain details</b> (bottom sheet): when it happened, why, sensations, triggers, symptoms.</li>
-        <li>Keyboard: <kbd>V</kbd> move · <kbd>B</kbd> draw · <kbd>A</kbd> area · <kbd>R</kbd> arrow · <kbd>E</kbd> erase · <kbd>1</kbd>–<kbd>0</kbd> level · <kbd>F</kbd> turn · <kbd>Space</kbd> pan · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</li>
+        <li>Keyboard: <kbd>V</kbd> move · <kbd>B</kbd> draw · <kbd>A</kbd> area · <kbd>R</kbd> arrow · <kbd>P</kbd> point · <kbd>E</kbd> erase · <kbd>1</kbd>–<kbd>0</kbd> level · <kbd>F</kbd> turn · <kbd>Space</kbd> pan · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</li>
       </ul>`,
       buttons: [{ value: 'ok', label: 'Got it', cls: 'primary' }],
     });
@@ -173,5 +144,5 @@
   S.onStatus((s) => { if (s === 'error') toast('Could not save on this device – export your data to keep it'); });
 
   go(location.hash.slice(1) || 'home');
-  maybeWelcome();
+  if (!S.data.onboarded && !S.data.entries.length) PP.info.startOnboarding(false);
 })();

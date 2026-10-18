@@ -10,6 +10,7 @@
     area: 'Circle the painful area',
     arrow: 'Drag in the direction the pain <b>spreads</b>',
     erase: 'Rub out marks in this entry',
+    point: '<b>Tap</b> the exact spot that hurts',
   };
   const SIZES = [{ px: 5, lbl: 'S' }, { px: 10, lbl: 'M' }, { px: 18, lbl: 'L' }];
 
@@ -52,12 +53,14 @@
     const s = Math.min(w / r.w, h / r.h);
     return { s, tx: ins.l + w / 2 - (r.x + r.w / 2) * s, ty: ins.t + h / 2 - (r.y + r.h / 2) * s };
   }
-  const clampS = (s) => Math.max(fitS * 0.6, Math.min(fitS * 60, s));
+  const MAX_ZOOM = 8; // spec: 1× – 8×
+  const clampS = (s) => Math.max(fitS * 0.9, Math.min(fitS * MAX_ZOOM, s));
   function applyCam() {
     world.setAttribute('transform', `matrix(${cam.s} 0 0 ${cam.s} ${cam.tx} ${cam.ty})`);
     // The glow filter is costly on big rasters – drop it when zoomed far in.
     const glow = cam.s / fitS < 5;
     $$('.marks', world).forEach((g) => g.classList.toggle('glow', glow));
+    $('#zoomLbl').textContent = (cam.s / fitS).toFixed(1) + '×';
     updateCursorSize();
   }
   function stopAnim() { if (anim) { cancelAnimationFrame(anim.raf); clearTimeout(anim.fallback); } anim = null; }
@@ -83,7 +86,15 @@
     const r = B.byId[id], bb = r.bbox, pad = Math.max(bb.w, bb.h) * 0.3 + 6;
     return { x: bb.x + B.OFF[r.view] - pad, y: bb.y - pad, w: bb.w + 2 * pad, h: bb.h + 2 * pad };
   };
-  const fitTarget = () => (ui.region ? camForRect(regionRect(ui.region)) : camForRect(viewRect(ui.side)));
+  function fitTarget() {
+    if (!ui.region) return camForRect(viewRect(ui.side));
+    const t = camForRect(regionRect(ui.region));
+    if (t.s <= fitS * MAX_ZOOM) return t;
+    // Tiny regions (eye, wrist …): stop at the maximum zoom, centred on the region
+    const r = regionRect(ui.region), s = fitS * MAX_ZOOM;
+    const cx = (size.w - INSET.l - INSET.r) / 2 + INSET.l, cy = (size.h - INSET.t - INSET.b) / 2 + INSET.t;
+    return { s, tx: cx - (r.x + r.w / 2) * s, ty: cy - (r.y + r.h / 2) * s };
+  }
   function zoomAt(px, py, f) {
     const s = clampS(cam.s * f);
     const wx = (px - cam.tx) / cam.s, wy = (py - cam.ty) / cam.s;
@@ -147,6 +158,7 @@
   function setRegion(id, { animate = true } = {}) {
     ui.region = id;
     if (id && B.byId[id].view !== ui.side) showSide(B.byId[id].view);
+    $('#btnMarkRegion').hidden = !id;
     stage.classList.toggle('focus', !!id);
     regionEls.forEach((el, rid) => el.classList.toggle('selected', rid === id));
     const reg = id && B.byId[id];
@@ -170,7 +182,7 @@
   $('#tFit').addEventListener('click', () => animateTo(fitTarget()));
 
   // ---------- tools, levels, size ----------
-  const isDrawTool = (t) => t === 'draw' || t === 'area' || t === 'arrow' || t === 'erase';
+  const isDrawTool = (t) => t === 'draw' || t === 'area' || t === 'arrow' || t === 'point' || t === 'erase';
   function setTool(t) {
     ui.tool = t;
     if (isDrawTool(t)) { ui.lastDrawTool = t; saveUI(); }
@@ -242,6 +254,7 @@
     const s = cam.s;
     if (tool === 'draw') return brushPx() / s;
     if (tool === 'arrow') return Math.max(2.5, Math.min(brushPx() * 0.7, 10)) / s;
+    if (tool === 'point') return Math.max(4, brushPx() * 0.7) / s;
     return Math.max(1.6, brushPx() * 0.25) / s;
   }
   function startStroke(e) {
@@ -267,6 +280,7 @@
   }
   function addPoint(cx, cy) {
     const g = gesture;
+    if (g.tool === 'point') return false; // a point marker stays where it was tapped
     if (Math.hypot(cx - g.lastC[0], cy - g.lastC[1]) < 1.2) return false;
     g.lastC = [cx, cy];
     g.pts.push(toLocal(clientToWorld(cx, cy), g.view));
@@ -286,6 +300,7 @@
     let pts = g.pts.map((p) => [G.r2(p[0]), G.r2(p[1])]);
     const kind = g.tool === 'draw' ? 'stroke' : g.tool;
     if (kind === 'stroke') pts = G.simplify(pts, 0.35 / s);
+    if (kind === 'point') pts = [pts[0]];
     if (kind === 'area') {
       if (pts.length < 3 || G.polyArea(pts) < Math.pow(10 / s, 2)) { toast('Draw a circle around the painful area'); return; }
       pts = G.simplify(pts, 0.6 / s);
@@ -326,7 +341,7 @@
           if (G.pointInPoly(lp, sh.points) || G.distToPolyline(lp, sh.points, true) < rr) { changed = true; continue; }
           next.push(sh); continue;
         }
-        if (sh.kind === 'arrow') {
+        if (sh.kind === 'arrow' || sh.kind === 'point') {
           if (G.distToPolyline(lp, sh.points) < rr + sh.width * 2) { changed = true; continue; }
           next.push(sh); continue;
         }
@@ -473,12 +488,28 @@
   }
   function hideCursor() { brushCursor.hidden = true; stage.classList.remove('has-cursor'); }
 
+  // Accessible alternative to freehand drawing: mark the whole selected region in the current pain level.
+  $('#btnMarkRegion').addEventListener('click', () => {
+    const reg = ui.region && B.byId[ui.region];
+    if (!reg) return;
+    const shapes = reg.shapes.map((sp) => {
+      const pts = sp.t === 'e'
+        ? Array.from({ length: 32 }, (_, i) => { const a = (i / 32) * Math.PI * 2; return [sp.cx + Math.cos(a) * sp.rx, sp.cy + Math.sin(a) * sp.ry]; })
+        : sp.pts.map((p) => p.slice());
+      return B.tagShape({ id: S.uid('s'), kind: 'area', view: reg.view, level: ui.level, typeId: null, width: G.r2(1.2 / cam.s), points: pts.map((p) => [G.r2(p[0]), G.r2(p[1])]), createdAt: S.nowISO(), label: reg.name });
+    });
+    S.mutate(() => { const e = ensureActiveEntry(); e.shapes.push(...shapes); S.syncIntensity(e); S.touch(e); });
+    toast(`Marked: ${reg.name} – level ${ui.level}/10`);
+  });
+  $('#zoomIn').addEventListener('click', () => zoomCenter(1.5));
+  $('#zoomOut').addEventListener('click', () => zoomCenter(1 / 1.5));
+
   $('#btnUndo').addEventListener('click', () => S.undo());
   $('#btnRedo').addEventListener('click', () => S.redo());
 
   // Keyboard (only while the Track screen is visible)
   const typing = (t) => t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
-  const zoomCenter = (f) => { const s = clampS(cam.s * f); const wx = (size.w / 2 - cam.tx) / cam.s, wy = (size.h / 2 - cam.ty) / cam.s; animateTo({ s, tx: size.w / 2 - wx * s, ty: size.h / 2 - wy * s }, 180); };
+  function zoomCenter(f) { const s = clampS(cam.s * f); const wx = (size.w / 2 - cam.tx) / cam.s, wy = (size.h / 2 - cam.ty) / cam.s; animateTo({ s, tx: size.w / 2 - wx * s, ty: size.h / 2 - wy * s }, 180); }
   window.addEventListener('keydown', (e) => {
     if (!screen.classList.contains('active') || typing(e.target) || $('#dlg').open) return;
     const k = e.key.toLowerCase();
@@ -486,7 +517,7 @@
     if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); S.redo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === ' ') { e.preventDefault(); if (!ui.space) { ui.space = true; stage.classList.add('tool-nav'); hideCursor(); } return; }
-    const map = { v: 'nav', b: 'draw', a: 'area', r: 'arrow', e: 'erase' };
+    const map = { v: 'nav', b: 'draw', a: 'area', r: 'arrow', p: 'point', e: 'erase' };
     if (map[k]) setTool(map[k]);
     else if (/^[0-9]$/.test(k)) { ui.level = k === '0' ? 10 : +k; saveUI(); renderLevels(); updateCursorSize(); }
     else if (k === 'f') turnTo(ui.side === 'front' ? 'back' : 'front');
@@ -537,9 +568,25 @@
   const chipGroup = (field, legend, selected, opts = {}) => {
     const sel = Array.isArray(selected) ? selected : selected ? [selected] : [];
     const list = V[field].concat(sel.filter((c) => !V[field].some((o) => o.code === c)).map((c) => ({ code: c, label: c })));
-    return `<fieldset class="chips${opts.outline ? ' outline' : ''}" data-field="${field}"${opts.single ? ' data-single="1"' : ''}><legend>${legend}</legend>
-      ${list.map((o) => `<button type="button" class="chip" aria-pressed="${sel.includes(o.code)}" data-val="${esc(o.code)}">${esc(o.label)}</button>`).join('')}</fieldset>`;
+    const chip = (o) => `<button type="button" class="chip" aria-pressed="${sel.includes(o.code)}" data-val="${esc(o.code)}">${esc(o.label)}</button>`;
+    let body;
+    if (opts.grouped) {
+      const groups = [...new Set(list.map((o) => o.group || 'Other'))];
+      body = groups.map((g) => `<div class="chip-group"><small>${esc(g)}</small><div class="chip-row">${list.filter((o) => (o.group || 'Other') === g).map(chip).join('')}</div></div>`).join('');
+    } else body = list.map(chip).join('');
+    return `<fieldset class="chips${opts.outline ? ' outline' : ''}${opts.grouped ? ' grouped' : ''}" data-field="${field}"${opts.single ? ' data-single="1"' : ''}><legend>${legend}${opts.help ? ` <span class="help">${opts.help}</span>` : ''}</legend>${body}</fieldset>`;
   };
+
+  const KIND_NAMES = { stroke: 'Line', area: 'Area', arrow: 'Arrow', point: 'Point' };
+
+  function impactRows(e) {
+    return e.dailyImpact.map((c) => {
+      const v = typeof e.impactScores[c] === 'number' ? e.impactScores[c] : 5;
+      return `<div class="impact-row"><span>${esc(V.label('dailyImpact', c))}</span>
+        <input type="range" min="0" max="10" step="1" value="${v}" data-impact="${esc(c)}" aria-label="Impact on ${esc(V.label('dailyImpact', c))}, 0 no impact to 10 unable to do it">
+        <b data-impact-val="${esc(c)}">${v}</b></div>`;
+    }).join('');
+  }
 
   function renderEditor() {
     const ed = $('#editor');
@@ -547,34 +594,42 @@
     renderSheetSum();
     ed.dataset.for = e ? e.id : '';
     if (!e) {
-      ed.innerHTML = `<p class="muted">Pick a pain level on the right, tap <b>Draw</b> and mark where it hurts. Your entry is created automatically – then come back here to add when, why and how it feels.</p>`;
+      ed.innerHTML = `<p class="muted">Pick a pain level on the right, tap <b>Draw</b> (or <b>Point</b>) and mark where it hurts. Your entry is created automatically – then come back here to add when, why and how it feels.</p>`;
       return;
     }
     const pct = (e.intensity / 10) * 100;
     ed.innerHTML = `
       <label class="fld"><input type="text" class="title-input" id="edTitle" value="${esc(e.title)}" maxlength="80" aria-label="Entry name"></label>
       <div class="fld"><span>When did it happen?</span>
-        <div class="now-row"><input type="datetime-local" id="edWhen" value="${toLocalInput(e.occurredAt)}"><button type="button" class="btn" id="edNow">Now</button></div></div>
+        <div class="now-row"><input type="datetime-local" id="edWhen" value="${toLocalInput(e.occurredAt)}" aria-label="Date and time it happened"><button type="button" class="btn" id="edNow">Now</button></div>
+        <span class="help">Saved with time zone ${esc(e.timeZone || PP.ui.tzLabel())}</span></div>
       <div class="fld" id="edIntWrap" style="--ic:${V.levelColor(e.intensity)};--p:${pct}%">
-        <span>Intensity</span>
+        <span>Pain intensity <span class="help">0 = no pain · 10 = worst imaginable</span></span>
         <div class="int-row"><span class="int-val" id="edIntVal">${e.intensity}<small>/10</small></span>
           <input type="range" class="int-range" id="edInt" min="0" max="10" step="1" value="${e.intensity}" aria-label="Pain intensity 0 to 10"></div>
         <span class="int-txt" id="edIntTxt">${V.levelText(e.intensity)}${e.intensityManual ? '' : ' · follows the strongest color you drew'}</span>
+        <span class="help">Colors are visual aids only – they are not a sign of medical urgency.</span>
       </div>
       ${chipGroup('sensations', 'Sensation', e.sensations)}
       ${chipGroup('duration', 'Duration', e.duration, { single: true })}
-      ${chipGroup('triggers', 'Possible triggers', e.triggers, { outline: true })}
-      <label class="fld"><span>Why? What were you doing?</span><textarea id="edContext" placeholder="E.g. long car drive, carried heavy bags, stressful meeting …">${esc(e.context)}</textarea></label>
+      ${chipGroup('pattern', 'Pattern', e.pattern)}
       ${chipGroup('associatedSymptoms', 'Other symptoms', e.associatedSymptoms)}
-      ${chipGroup('dailyImpact', 'What does it affect?', e.dailyImpact)}
-      <label class="fld"><span>Describe it in your own words</span><textarea id="edSymNotes" placeholder="E.g. radiates down my calf when I sit for a long time">${esc(e.symptomNotes)}</textarea></label>
+      <label class="fld"><span>Other symptoms – describe <span class="help">(optional)</span></span><input type="text" id="edOtherSym" value="${esc(e.otherSymptoms)}" placeholder="E.g. stiffness in the morning"></label>
+      ${chipGroup('triggers', 'Possible triggers', e.triggers, { outline: true, grouped: true, help: 'What you noticed – not necessarily the cause' })}
+      <label class="fld"><span>Other trigger <span class="help">(optional)</span></span><input type="text" id="edOtherTrig" value="${esc(e.otherTriggers)}" placeholder="Describe anything else you noticed"></label>
+      <label class="fld"><span>What were you doing when it happened?</span><textarea id="edContext" placeholder="E.g. long car drive, carried heavy bags, stressful meeting …">${esc(e.context)}</textarea></label>
+      ${chipGroup('dailyImpact', 'How are your symptoms affecting your daily life?', e.dailyImpact)}
+      <div class="fld" id="edImpactWrap"${e.dailyImpact.length ? '' : ' hidden'}><span>Rate each activity <span class="help">0 = no impact · 10 = unable to do it</span></span><div id="edImpact" class="impact-list">${impactRows(e)}</div></div>
+      <label class="fld"><span>Describe the impact in your own words <span class="help">(optional)</span></span><textarea id="edImpactNotes" placeholder="E.g. I can only sit for 20 minutes at work">${esc(e.impactNotes)}</textarea></label>
+      <label class="fld"><span>Describe the pain in your own words <span class="help">(optional)</span></span><textarea id="edSymNotes" placeholder="E.g. radiates down my calf when I sit for a long time">${esc(e.symptomNotes)}</textarea></label>
       <label class="fld"><span>When did this problem first start? <span class="help">(optional)</span></span><input type="datetime-local" id="edOnset" value="${esc(e.onset)}"></label>
-      <label class="fld"><span>Notes for your doctor</span><textarea id="edNotes">${esc(e.notes)}</textarea></label>
+      <label class="fld"><span>Notes for your healthcare professional <span class="help">(optional)</span></span><textarea id="edNotes">${esc(e.notes)}</textarea></label>
       <div id="edMeta"></div>
       <div class="ed-actions"><button type="button" class="btn" id="edClear">${icon('eraser')} Clear drawings</button><button type="button" class="btn danger" id="edDelete">${icon('trash')} Delete entry</button></div>`;
 
-    const changed = () => { S.touch(e); S.save(); renderEntryChip(); renderSheetSum(); renderEditorMeta(); emit('data'); };
-    $('#edTitle').addEventListener('input', (ev) => { e.title = ev.target.value; changed(); });
+    const changed = () => { S.touch(e); S.save(); renderEntryChip(); renderSheetSum(); emit('data'); };
+    const bindText = (id, field, ev = 'input') => $(id).addEventListener(ev, (x) => { e[field] = x.target.value; changed(); });
+    bindText('#edTitle', 'title');
     $('#edWhen').addEventListener('change', (ev) => { e.occurredAt = fromLocalInput(ev.target.value) || e.occurredAt; changed(); });
     $('#edNow').addEventListener('click', () => { e.occurredAt = new Date().toISOString(); $('#edWhen').value = toLocalInput(e.occurredAt); changed(); });
     $('#edInt').addEventListener('input', (ev) => {
@@ -597,16 +652,32 @@
         if (i >= 0) arr.splice(i, 1); else arr.push(v);
         b.setAttribute('aria-pressed', String(i < 0));
       }
+      if (field === 'dailyImpact') {
+        if (!e.dailyImpact.includes(v)) delete e.impactScores[v];
+        else if (typeof e.impactScores[v] !== 'number') e.impactScores[v] = 5;
+        $('#edImpact').innerHTML = impactRows(e);
+        $('#edImpactWrap').hidden = !e.dailyImpact.length;
+      }
       changed();
     }));
-    $('#edContext').addEventListener('input', (ev) => { e.context = ev.target.value; changed(); });
-    $('#edSymNotes').addEventListener('input', (ev) => { e.symptomNotes = ev.target.value; changed(); });
-    $('#edOnset').addEventListener('change', (ev) => { e.onset = ev.target.value; changed(); });
-    $('#edNotes').addEventListener('input', (ev) => { e.notes = ev.target.value; changed(); });
+    $('#edImpact').addEventListener('input', (ev) => {
+      const c = ev.target.dataset.impact;
+      if (!c) return;
+      e.impactScores[c] = +ev.target.value;
+      $(`[data-impact-val="${c}"]`, ed).textContent = ev.target.value;
+      changed();
+    });
+    bindText('#edOtherSym', 'otherSymptoms');
+    bindText('#edOtherTrig', 'otherTriggers');
+    bindText('#edContext', 'context');
+    bindText('#edImpactNotes', 'impactNotes');
+    bindText('#edSymNotes', 'symptomNotes');
+    bindText('#edOnset', 'onset', 'change');
+    bindText('#edNotes', 'notes');
     $('#edClear').addEventListener('click', async () => {
       if (!e.shapes.length) { toast('This entry has no drawings yet'); return; }
       const v = await modal({ title: 'Clear drawings?', body: `<p>All drawings in “${esc(e.title)}” are removed. Details are kept. You can undo.</p>`, buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Clear', cls: 'danger-fill' }] });
-      if (v === 'ok') S.mutate(() => { e.shapes = []; S.touch(e); });
+      if (v === 'ok') S.mutate(() => { e.shapes = []; S.syncIntensity(e); S.touch(e); });
     });
     $('#edDelete').addEventListener('click', async () => {
       const v = await modal({ title: `Delete “${esc(e.title)}”?`, body: '<p>The entry and its drawings are removed. You can undo.</p>', buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'ok', label: 'Delete', cls: 'danger-fill' }] });
@@ -622,20 +693,37 @@
     renderEditorMeta();
   }
 
+  /** Markings list: each mark can get its own label, be located on the body, or be deleted. */
   function renderEditorMeta() {
     const e = S.activeEntry();
     const box = $('#edMeta');
     if (!e || !box) return;
     const regs = RP.regionList(e);
-    const notes = RP.pointNotes(e);
+    const marks = e.shapes.map((sh, i) => {
+      const reg = sh.primaryRegion && B.byId[sh.primaryRegion];
+      return `<div class="mark-row" data-i="${i}">
+        <span class="mk-dot" style="--c:${R.shapeColor(sh)}">${sh.level || ''}</span>
+        <span class="mk-main"><small>${KIND_NAMES[sh.kind] || sh.kind} · ${esc(reg ? reg.name : 'outside the body')}${sh.view === 'back' ? ' (back)' : ''}</small>
+          <input type="text" value="${esc(sh.label || '')}" placeholder="Label (optional)" data-label="${i}" aria-label="Label for marking ${i + 1}" maxlength="60"></span>
+        ${reg ? `<button type="button" class="icon-btn sm" data-goto="${reg.id}" aria-label="Show on body" title="Show on body">${icon('point')}</button>` : ''}
+        <button type="button" class="icon-btn sm" data-del="${i}" aria-label="Delete marking ${i + 1}" title="Delete marking">${icon('trash')}</button></div>`;
+    }).join('');
     box.innerHTML = `
       <div class="fld"><span>Where</span><div class="reg-chips">${regs.length ? regs.map((r) => `<button type="button" class="reg-chip" data-region="${r.id}">${esc(r.name)}${r.view === 'back' ? ' (back)' : ''}</button>`).join('') : '<span class="muted">Draw on the body to link this entry to a body area.</span>'}</div></div>
-      ${notes.length ? `<div class="fld"><span>Spots with their own level</span><ul class="pt-notes">${notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
-      <div class="meta"><span>Drawings</span><b>${e.shapes.length}</b><span>Logged</span><b>${fmtDateTime(e.createdAt)}</b><span>Last changed</span><b>${fmtDateTime(e.updatedAt)}</b></div>`;
+      ${e.shapes.length ? `<div class="fld"><span>Markings (${e.shapes.length})</span><div class="mark-list">${marks}</div></div>` : ''}
+      <div class="meta"><span>Logged</span><b>${fmtDateTime(e.createdAt)}</b><span>Last changed</span><b>${fmtDateTime(e.updatedAt)}</b></div>`;
     $$('.reg-chip', box).forEach((b) => b.addEventListener('click', () => { sheet.classList.remove('open'); setRegion(b.dataset.region); }));
+    $$('[data-goto]', box).forEach((b) => b.addEventListener('click', () => { sheet.classList.remove('open'); setRegion(b.dataset.goto); }));
+    $$('[data-label]', box).forEach((inp) => inp.addEventListener('input', () => { const sh = e.shapes[+inp.dataset.label]; if (sh) { sh.label = inp.value; S.touch(e); S.save(); } }));
+    $$('[data-del]', box).forEach((b) => b.addEventListener('click', () => {
+      const i = +b.dataset.del;
+      S.mutate(() => { e.shapes.splice(i, 1); S.syncIntensity(e); S.touch(e); });
+      toast('Marking deleted – tap Undo to restore');
+    }));
   }
 
   function renderAll() {
+    stage.style.setProperty('--mark-op', S.data.settings.markOpacity);
     renderMarks(); renderEntryChip();
     const e = S.activeEntry();
     if ($('#editor').dataset.for !== (e ? e.id : '')) renderEditor(); else { renderSheetSum(); renderEditorMeta(); }

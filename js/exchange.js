@@ -20,7 +20,7 @@
   const unitX = (p) => G.r2((p / 100) * B.VIEW_W);
   const unitY = (p) => G.r2((p / 100) * B.VIEW_H);
   const round1 = (v) => Math.round(v * 10) / 10;
-  const KINDS = ['stroke', 'area', 'arrow'];
+  const KINDS = ['stroke', 'area', 'arrow', 'point'];
   const arr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
 
   /** The point that best represents a drawing: an arrow's start (pain origin), otherwise the on-shape point nearest its centre. */
@@ -45,7 +45,7 @@
       intensity: sh.level || (typeof sh.intensity === 'number' ? sh.intensity : entry.intensity),
       sensations: Array.isArray(sh.sensations) ? sh.sensations.slice() : entry.sensations.slice(),
       kind: sh.kind,
-      painType: sh.typeId,
+      label: sh.label || undefined,
       width: pctX(sh.width || 0),
       path: sh.points.map(([x, y]) => [pctX(x), pctY(y)]),
     };
@@ -63,7 +63,13 @@
       notes: e.notes,
       // extensions
       occurredAt: e.occurredAt,
+      timeZone: e.timeZone,
       context: e.context,
+      pattern: e.pattern.slice(),
+      impactScores: { ...e.impactScores },
+      otherSymptoms: e.otherSymptoms,
+      otherTriggers: e.otherTriggers,
+      impactNotes: e.impactNotes,
       title: e.title,
       updatedAt: e.updatedAt,
       onset: e.onset || null,
@@ -96,6 +102,10 @@
     e.title = dto.title || '';
     e.occurredAt = dto.occurredAt || dto.createdAt || e.occurredAt;
     e.context = typeof dto.context === 'string' ? dto.context : '';
+    if (dto.timeZone) e.timeZone = String(dto.timeZone);
+    e.pattern = arr(dto.pattern);
+    e.impactScores = dto.impactScores && typeof dto.impactScores === 'object' ? { ...dto.impactScores } : {};
+    for (const k of ['otherSymptoms', 'otherTriggers', 'impactNotes']) e[k] = typeof dto[k] === 'string' ? dto[k] : '';
     e.onset = dto.onset || '';
     e.notes = typeof dto.notes === 'string' ? dto.notes : '';
     e.symptomNotes = typeof dto.description === 'string' ? dto.description : '';
@@ -121,6 +131,7 @@
         width: isFinite(bp.width) && bp.width > 0 ? unitX(bp.width) : 8,
         points: pts, createdAt: e.createdAt,
       });
+      if (typeof bp.label === 'string' && bp.label) shape.label = bp.label;
       if (bp.region) {
         const declared = B.byCode(bp.view, bp.region);
         const actual = shape.primaryRegion && B.byId[shape.primaryRegion];

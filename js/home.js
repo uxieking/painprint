@@ -57,5 +57,5 @@
 
   $('#btnNewEntry').addEventListener('click', () => emit('go', 'track', { newEntry: true, region: null }));
 
-  PP.home = { render() { renderMoods(); renderLatest(); } };
+  PP.home = { render() { renderMoods(); renderLatest(); $('#demoBadge').hidden = !S.data.demo; } };
 })();
