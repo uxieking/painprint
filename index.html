@@ -3,112 +3,172 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0b1424">
   <title>PAINPRINT</title>
-  <meta name="description" content="PAINPRINT – patients draw exactly where it hurts on an interactive body map and share a structured pain report with their clinician.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2713%27 fill=%27none%27 stroke=%27%2318202c%27 stroke-width=%272.5%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%23e4572e%27/%3E%3C/svg%3E">
+  <meta name="description" content="PAINPRINT – make the invisible understandable. Patients draw exactly where it hurts, log when and why between visits, and bring a clear pain report to their doctor.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230b1424%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%279%27 fill=%27none%27 stroke=%27%2360a5fa%27 stroke-width=%272%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%23ef4444%27/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <div class="app" id="app">
-    <header class="topbar">
-      <div class="brand" aria-label="PAINPRINT">
-        <svg viewBox="0 0 32 32" class="logo" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="16" r="7" fill="none" stroke="currentColor" stroke-width="2" opacity=".55"/><circle cx="16" cy="16" r="3.2" fill="var(--pain)"/></svg>
-        <span>PAIN<b>PRINT</b></span>
-      </div>
-      <nav class="crumbs" aria-label="View">
-        <button id="btnOverview" class="crumb" type="button">Full body</button>
-        <span id="crumbSep" class="crumb-sep" hidden>›</span>
-        <span id="crumbRegion" class="crumb-current"></span>
-      </nav>
-      <div class="top-actions">
-        <span id="saveStatus" class="save-status" role="status"></span>
-        <button id="btnReport" class="btn primary" type="button" data-icon="report"><span>Report</span></button>
-        <div class="menu-wrap">
-          <button id="btnMenu" class="btn icon-only" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Menu" data-icon="menu"></button>
-          <div id="menu" class="menu" role="menu" hidden>
-            <button role="menuitem" data-act="demo">Load sample patient</button>
-            <button role="menuitem" data-act="patient">Patient details</button>
-            <button role="menuitem" data-act="types">Edit pain types</button>
-            <hr>
-            <button role="menuitem" data-act="export">Export entries (JSON)</button>
-            <button role="menuitem" data-act="import">Import entries / backup</button>
-            <button role="menuitem" data-act="backup">Download full backup</button>
-            <hr>
-            <button role="menuitem" data-act="help">Help &amp; shortcuts</button>
-            <button role="menuitem" data-act="reset" class="danger">Delete all data</button>
-          </div>
-        </div>
-      </div>
-    </header>
+  <aside class="desk-aside" aria-hidden="true">
+    <div class="desk-logo"><span class="logo-mark"></span>PAINPRINT</div>
+    <h1>Make the invisible<br>understandable.</h1>
+    <p>Pain doesn't show on the outside – and at the doctor's office it's easy to forget, downplay or overstate it. PAINPRINT is a pain diary you <b>draw</b>: mark exactly where it hurts, how much, when and why – and bring the whole story to your next appointment.</p>
+    <ul>
+      <li>Draw precisely on a zoomable body – front and back</li>
+      <li>Pain scale 1–10 in color, from violet to <span style="color:#f97316">orange</span> and <span style="color:#ef4444">red</span></li>
+      <li>Log when it happened and why</li>
+      <li>See your trend and download a PDF for your doctor</li>
+    </ul>
+    <p class="desk-hint">Best on your phone: <b>uxieking.github.io/painprint</b></p>
+  </aside>
 
-    <main class="layout">
-      <section class="work">
-        <div class="toolbar" role="toolbar" aria-label="Tools">
-          <div class="seg" id="tools">
-            <button class="tool nav" data-tool="nav" title="Navigate: pan and zoom (V)" data-icon="hand"><span>Navigate</span></button>
-            <span class="seg-div" aria-hidden="true"></span>
-            <button class="tool" data-tool="draw" title="Brush: freehand drawing (B)" data-icon="pen"><span>Brush</span></button>
-            <button class="tool" data-tool="area" title="Area: outline an area (A)" data-icon="area"><span>Area</span></button>
-            <button class="tool" data-tool="arrow" title="Arrow: show radiating pain (R)" data-icon="arrow"><span>Arrow</span></button>
-            <button class="tool" data-tool="erase" title="Eraser – erases in the active entry (E)" data-icon="eraser"><span>Eraser</span></button>
-          </div>
-          <div class="types" id="typePalette" role="radiogroup" aria-label="Pain type and color"></div>
-          <label class="brush" title="Brush size">
-            <span class="brush-dot" id="brushDot"></span>
-            <input type="range" id="brush" min="2" max="48" step="1" aria-label="Brush size">
-          </label>
-          <div class="hist">
-            <button class="btn icon-only" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" data-icon="undo"></button>
-            <button class="btn icon-only" id="btnRedo" title="Redo (Ctrl+Y)" aria-label="Redo" data-icon="redo"></button>
-            <button class="btn icon-only" id="btnClear" title="Clear drawings" aria-label="Clear drawings" data-icon="trash"></button>
-          </div>
-        </div>
+  <div class="shell" id="shell">
+    <main class="screens">
 
-        <div class="stage-wrap">
-          <div id="stage" class="stage tool-nav" aria-label="Body map. Select a region or draw.">
-            <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
-              <g id="world"></g>
-            </svg>
+      <!-- ============ HOME ============ -->
+      <section class="screen" data-screen="home" id="scr-home">
+        <header class="hero">
+          <svg class="hero-art" viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b7a9e"/><stop offset=".55" stop-color="#a9b8c9"/><stop offset="1" stop-color="#d8dee6"/></linearGradient>
+              <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d7088"/><stop offset="1" stop-color="#8697ab"/></linearGradient>
+              <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34465d"/><stop offset="1" stop-color="#55677d"/></linearGradient>
+            </defs>
+            <rect width="400" height="200" fill="url(#sky)"/>
+            <path d="M0 140 L60 92 L105 120 L160 70 L215 118 L262 86 L320 126 L360 100 L400 122 V200 H0Z" fill="url(#m1)" opacity=".85"/>
+            <path d="M0 168 L48 138 L96 158 L150 124 L206 160 L258 134 L318 162 L372 140 L400 152 V200 H0Z" fill="url(#m2)"/>
+            <path d="M0 184 Q100 176 200 184 T400 182 V200 H0Z" fill="#c9d3dd" opacity=".55"/>
+          </svg>
+          <div class="hero-top">
+            <div class="logo-lg"><span class="logo-figure" aria-hidden="true"></span>PAINPRINT</div>
+            <button class="icon-btn glass" id="btnSettings" aria-label="Settings and data" aria-haspopup="true" data-icon="gear"></button>
           </div>
-          <button id="modeBadge" class="mode-badge" type="button"></button>
-          <div id="hoverPill" class="hover-pill" hidden></div>
-          <div id="brushCursor" class="brush-cursor" hidden></div>
-          <div class="zoomctl">
-            <button class="btn icon-only" id="zoomIn" aria-label="Zoom in" data-icon="plus"></button>
-            <span id="zoomLabel" class="zoom-label">100%</span>
-            <button class="btn icon-only" id="zoomOut" aria-label="Zoom out" data-icon="minus"></button>
-            <button class="btn icon-only" id="zoomFit" aria-label="Fit view" title="Fit (0)" data-icon="fit"></button>
+          <p class="tagline">Make the invisible understandable.</p>
+        </header>
+        <div class="home-body">
+          <div class="card mood-card">
+            <h3>How are you today?</h3>
+            <div class="moods" id="moods" role="radiogroup" aria-label="How are you today"></div>
           </div>
-          <label class="region-select">
-            <span class="sr-only">Select region</span>
-            <select id="regionSelect"></select>
-          </label>
-          <div id="toast" class="toast" role="status" hidden></div>
+          <div class="card latest" id="latestCard"></div>
+          <button class="cta" id="btnNewEntry" type="button" data-icon="plus"><span>New entry</span></button>
         </div>
       </section>
 
-      <aside class="panel" id="panel">
-        <div class="panel-head">
-          <button class="panel-toggle" id="panelToggle" type="button" aria-expanded="true" data-icon="chev"></button>
-          <h2>Pain entries</h2>
-          <button class="btn small" id="btnNewEntry" type="button" data-icon="plus"><span>New</span></button>
+      <!-- ============ TRACK ============ -->
+      <section class="screen dark" data-screen="track" id="scr-track">
+        <header class="t-head">
+          <button class="icon-btn" id="tBack" aria-label="Back" data-icon="back"></button>
+          <label class="t-title">
+            <span id="tTitle">Track pain</span><svg class="ic chev-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <select id="regionSelect" aria-label="Jump to body region"></select>
+          </label>
+          <button class="icon-btn" id="tFit" aria-label="Fit body to screen" data-icon="fit"></button>
+        </header>
+        <div class="t-sub">
+          <div class="seg-pill" id="sideSeg" role="tablist" aria-label="Body side">
+            <button role="tab" data-side="front" aria-selected="true">Front</button>
+            <button role="tab" data-side="back" aria-selected="false">Back</button>
+          </div>
+          <button class="entry-chip" id="entryChip" aria-haspopup="true"><span class="dot" id="entryChipDot"></span><span id="entryChipText">New entry</span><svg class="ic chev-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         </div>
-        <div class="panel-body">
-          <ul class="entries" id="entryList"></ul>
-          <div id="editor" class="editor"></div>
+        <div class="stage-wrap" id="stageWrap">
+          <div id="stage" class="stage tool-nav" aria-label="Body map. Tap a body area to zoom in, then draw where it hurts.">
+            <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#6cc0ff" stop-opacity=".50"/>
+                  <stop offset=".5" stop-color="#3d8be0" stop-opacity=".38"/>
+                  <stop offset="1" stop-color="#1d4f9c" stop-opacity=".42"/>
+                </linearGradient>
+                <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="3.2" result="b"/>
+                  <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <g id="world"></g>
+            </svg>
+          </div>
+          <div class="rail" id="rail" role="toolbar" aria-label="Drawing tools" aria-orientation="vertical">
+            <div class="rail-group" id="tools">
+              <button class="tool" data-tool="nav" title="Move & zoom – never draws (V)" data-icon="hand"><span>Move</span></button>
+              <button class="tool" data-tool="draw" title="Draw freehand (B)" data-icon="pen"><span>Draw</span></button>
+              <button class="tool" data-tool="area" title="Circle an area (A)" data-icon="area"><span>Area</span></button>
+              <button class="tool" data-tool="arrow" title="Arrow – pain that spreads (R)" data-icon="arrow"><span>Arrow</span></button>
+              <button class="tool" data-tool="erase" title="Erase in this entry (E)" data-icon="eraser"><span>Erase</span></button>
+              <button class="tool size" id="btnSize" title="Brush size"><i id="sizeDot"></i><span id="sizeLbl">M</span></button>
+            </div>
+            <div class="rail-group levels" id="levels" role="radiogroup" aria-label="Pain level 1 to 10"></div>
+          </div>
+          <div class="t-bottom">
+            <button class="hint" id="hint" type="button"></button>
+            <button class="icon-btn round" id="btnUndo" aria-label="Undo" title="Undo (Ctrl+Z)" data-icon="undo"></button>
+            <button class="icon-btn round" id="btnRedo" aria-label="Redo" title="Redo (Ctrl+Y)" data-icon="redo"></button>
+          </div>
+          <div id="brushCursor" class="brush-cursor" hidden></div>
+          <div class="sheet" id="sheet">
+            <button class="sheet-handle" id="sheetHandle" type="button" aria-expanded="false" aria-controls="editor">
+              <span class="grip"></span>
+              <span class="sheet-row"><b>Pain details</b><span id="sheetSum"></span></span>
+            </button>
+            <div class="sheet-body" id="editor"></div>
+          </div>
         </div>
-      </aside>
-    </main>
-  </div>
+      </section>
 
-  <div id="reportOverlay" class="report-overlay" hidden>
-    <div class="report-bar">
-      <button class="btn" id="reportClose" type="button" data-icon="back"><span>Back</span></button>
-      <span class="report-bar-title">Patient report</span>
-      <button class="btn primary" id="reportPrint" type="button" data-icon="report"><span>Print / save PDF</span></button>
-    </div>
-    <div id="report" class="report"></div>
+      <!-- ============ HISTORY ============ -->
+      <section class="screen" data-screen="history" id="scr-history">
+        <header class="page-head">
+          <div class="logo-md"><span class="logo-figure dark" aria-hidden="true"></span>PAINPRINT</div>
+        </header>
+        <div class="tabs" id="histTabs" role="tablist">
+          <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+          <button role="tab" data-tab="entries" aria-selected="false">Entries</button>
+          <button role="tab" data-tab="patterns" aria-selected="false">Patterns</button>
+        </div>
+        <div class="page-body">
+          <div data-pane="overview">
+            <div class="card">
+              <div class="card-head"><h3>Pain trend</h3><div class="pills" id="rangePills"><button data-days="7">7D</button><button data-days="30" class="on">30D</button><button data-days="90">90D</button></div></div>
+              <div id="trendChart" class="trend"></div>
+            </div>
+            <div class="card">
+              <h3>Body map – latest entries</h3>
+              <div class="mini-wrap"><div id="miniMap" class="mini-map"></div><div class="legend-col" id="miniLegend"></div></div>
+            </div>
+            <div class="card report-card">
+              <div class="rc-row"><span class="rc-icon" data-icon="report"></span><div><b>Generate report</b><p>A visual summary of where, when and why it hurts – symptoms and daily impact – for your doctor.</p></div></div>
+              <button class="cta small" id="btnDownload" type="button">Download PDF</button>
+            </div>
+          </div>
+          <div data-pane="entries" hidden><div id="entryList" class="entry-list"></div></div>
+          <div data-pane="patterns" hidden><div id="patterns"></div></div>
+        </div>
+      </section>
+
+      <!-- ============ REPORT ============ -->
+      <section class="screen" data-screen="report" id="scr-report">
+        <header class="page-head between">
+          <div class="logo-md"><span class="logo-figure dark" aria-hidden="true"></span>Report</div>
+          <div class="row-gap">
+            <button class="btn ghost" id="btnPatient" type="button">Patient details</button>
+            <button class="cta small" id="btnPrint" type="button">Download PDF</button>
+          </div>
+        </header>
+        <div class="page-body report-host"><div id="report" class="report"></div></div>
+      </section>
+    </main>
+
+    <nav class="tabbar" id="tabbar" aria-label="Main">
+      <button data-go="home" data-icon="home"><span>Home</span></button>
+      <button data-go="track" data-icon="track"><span>Track</span></button>
+      <button data-go="history" data-icon="history"><span>History</span></button>
+      <button data-go="report" data-icon="report"><span>Report</span></button>
+    </nav>
+
+    <div id="popover" class="popover" hidden></div>
+    <div id="toast" class="toast" role="status" hidden></div>
   </div>
 
   <dialog id="dlg" class="dlg"></dialog>
@@ -122,6 +182,10 @@
   <script src="js/exchange.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/report.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/track.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

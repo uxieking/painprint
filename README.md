@@ -1,24 +1,27 @@
 # PAINPRINT
+**Make the invisible understandable.**
 
-Let patients show exactly where it hurts. PAINPRINT is a 2D body map (front and back) where patients select a body region, open an enlarged anatomical view and draw their pain directly onto it – small localized spots, larger areas and arrows for radiating pain. Every drawing is stored as structured, coordinate-based data linked to anatomical regions, and can be exported as a patient report for clinicians.
+Pain is invisible. At the doctor's office patients often forget, downplay – or, out of nerves, overstate – what they have felt for weeks. PAINPRINT is a pain diary you **draw**: patients mark exactly where it hurts on a zoomable body, pick the pain level as a color, and log **when** it happened and **why**. Their doctor gets the real pattern between visits – not just a snapshot of the day of the appointment.
 
 ## Live demo
-**👉 https://uxieking.github.io/painprint/** – no account or login needed. Click **Try a sample patient** on the welcome screen to explore a filled-in pain map, or start empty and draw your own. Works on desktop, tablet (with stylus) and phone.
+**👉 https://uxieking.github.io/painprint/** – no account or login needed. Choose **Try a sample patient** on the welcome screen to explore a filled-in diary, or start empty and draw your own. Built mobile-first – best on a phone; on desktop it opens in a phone frame.
 
-How to try it in 1 minute:
-1. Tap a body part (e.g. the lower back) to open the enlarged view.
-2. Press **Brush**, **Area** or **Arrow** and draw where it hurts – pinch with two fingers to zoom at any time.
-3. Set intensity and sensations in the panel.
-4. Open **Report** to see the printable patient report with full-body and enlarged views.
+Try it in 1 minute:
+1. **Home** – check in (“How are you today?”) and tap **New entry**.
+2. **Track** – tap a body part (e.g. the jaw or the lower back) to zoom in, pick a pain level 1–10 and **Draw**. Use **Front / Back** to turn the body around.
+3. Open **Pain details** – set when it happened, why, sensations, duration and triggers.
+4. **History** – see the pain trend (7D/30D/90D), the diary timeline and patterns; **Download PDF** for your doctor.
 
 ## Features
-- Interactive front and back body views with 39 selectable regions (face, head, neck, shoulders, arms, hands, chest, abdomen, back, legs, feet …), left/right aware
-- Enlarged region views with pinch-to-zoom, pan, wheel zoom and zoom controls
-- Tools: freehand **Brush** (adjustable size), **Area** highlight, **Arrow** for radiating pain, **Eraser** (cuts strokes partially)
-- Customizable pain types (color + label), undo / redo / clear
-- Multiple independent pain entries, each with intensity (0–10), sensations, duration, triggers, associated symptoms, daily impact, onset, notes and timestamps
-- Printable patient report with the full body and enlarged views of every marked region
-- Autosave in the browser, JSON export/import
+- **Draw exactly where it hurts** – freehand, circled areas and arrows for pain that spreads, precise at every zoom level (drawings are stored in body coordinates, verified to ~0.1 px)
+- **Pain scale 1–10 as color** – every mark carries its level (9 = orange, 10 = red); the entry's intensity follows the strongest color drawn
+- **Turn the body around** – Front/Back flip; a zoomed area follows to the other side
+- **52 anatomical regions**, left/right aware, down to jaw, temples, ears and chin
+- **When & why** – each entry has the time it happened, context (“what were you doing?”), sensations, duration, triggers, symptoms and daily impact
+- **Daily check-in** and a **pain trend** chart; **Patterns**: where it hurts most, when it happens, common triggers
+- **Report / PDF** – between-visits summary, full body map, enlarged regions and a chronological pain diary
+- **Private by design** – everything stays on the device; JSON export/import for sharing
+- Accidental-mark protection: Move mode never draws, two fingers always zoom, stylus palm rejection
 
 ## Run
 ```
@@ -40,7 +43,12 @@ Open http://localhost:5173. No dependencies and no build step (plain HTML/CSS/JS
 | `js/exchange.js` | Exchange format (`bodyPoints`): export, import, validation |
 | `js/render.js` | SVG rendering of lines, areas and arrows (shared by app and report) |
 | `js/report.js` | Patient report: full body + enlarged regions + entry details |
-| `js/app.js` | Camera (zoom/pan), input (touch/mouse/stylus), tools, panel, dialogs |
+| `js/ui.js` | Shared UI helpers: icons, dialogs, popovers, mini body maps |
+| `js/track.js` | Track screen: camera (zoom/pan), touch/mouse/stylus input, tools, pain levels, Front/Back, Pain details |
+| `js/home.js` | Home: daily check-in, latest entry |
+| `js/history.js` | History: pain trend, diary timeline, patterns |
+| `js/demo.js` | Sample patient |
+| `js/main.js` | App shell: navigation, settings, import/export, report screen |
 
 ## Exchange format (Menu → Export entries)
 One entry, as in [examples/entry-001.json](examples/entry-001.json):

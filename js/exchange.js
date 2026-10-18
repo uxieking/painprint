@@ -42,7 +42,7 @@
       x: round1(pctX(p[0])),
       y: round1(pctY(p[1])),
       region: reg ? reg.code : null,
-      intensity: typeof sh.intensity === 'number' ? sh.intensity : entry.intensity,
+      intensity: sh.level || (typeof sh.intensity === 'number' ? sh.intensity : entry.intensity),
       sensations: Array.isArray(sh.sensations) ? sh.sensations.slice() : entry.sensations.slice(),
       kind: sh.kind,
       painType: sh.typeId,
@@ -62,6 +62,8 @@
       dailyImpact: e.dailyImpact.slice(),
       notes: e.notes,
       // extensions
+      occurredAt: e.occurredAt,
+      context: e.context,
       title: e.title,
       updatedAt: e.updatedAt,
       onset: e.onset || null,
@@ -92,6 +94,8 @@
     if (dto.createdAt) e.createdAt = dto.createdAt;
     e.updatedAt = dto.updatedAt || dto.createdAt || e.updatedAt;
     e.title = dto.title || '';
+    e.occurredAt = dto.occurredAt || dto.createdAt || e.occurredAt;
+    e.context = typeof dto.context === 'string' ? dto.context : '';
     e.onset = dto.onset || '';
     e.notes = typeof dto.notes === 'string' ? dto.notes : '';
     e.symptomNotes = typeof dto.description === 'string' ? dto.description : '';
@@ -126,17 +130,21 @@
           shape.reportedRegion = bp.region;
         }
       }
-      if (typeof bp.intensity === 'number') { shape.intensity = Math.max(0, Math.min(10, Math.round(bp.intensity))); intensities.push(shape.intensity); }
+      if (typeof bp.intensity === 'number') {
+        const lv = Math.max(0, Math.min(10, Math.round(bp.intensity)));
+        if (lv >= 1) shape.level = lv;
+        intensities.push(lv);
+      }
       if (Array.isArray(bp.sensations)) { shape.sensations = arr(bp.sensations); shape.sensations.forEach((s) => sens.add(s)); }
       e.shapes.push(shape);
     });
 
     e.intensity = typeof dto.intensity === 'number' ? dto.intensity : intensities.length ? Math.max(...intensities) : 5;
+    e.intensityManual = typeof dto.intensity === 'number';
     e.sensations = [...sens];
     // Keep per-point values only where they differ from the entry as a whole
     const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
     for (const sh of e.shapes) {
-      if (sh.intensity === e.intensity) delete sh.intensity;
       if (sh.sensations && same(sh.sensations, e.sensations)) delete sh.sensations;
     }
     return { entry: e, warnings };

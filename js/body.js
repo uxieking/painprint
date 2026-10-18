@@ -35,8 +35,12 @@
     { key: 'upper_arm', pair: true, group: 'arms', shapes: [P([100, 250], [131, 250], [132, 300], [129, 375], [95, 375], [96, 300])] },
     { key: 'forearm', pair: true, group: 'arms', shapes: [P([95, 375], [129, 375], [124, 440], [120, 500], [94, 500], [91, 440])] },
     { key: 'hand', pair: true, group: 'hands', shapes: [P([94, 500], [120, 500], [123, 520], [125, 548], [123, 578], [117, 592], [109, 595], [101, 593], [94, 583], [91, 560], [84, 552], [78, 540], [79, 528], [85, 524], [91, 520])] },
-    { key: 'head', group: 'head', shapes: [E(154, 84, 7, 14), E(246, 84, 7, 14), E(200, 76, 46, 58)] },
+    { key: 'ear', pair: true, group: 'head', shapes: [E(154, 84, 7, 14)] },
+    { key: 'head', group: 'head', shapes: [E(200, 76, 46, 58)] },
+    { key: 'temple', pair: true, group: 'head', views: ['front'], shapes: [E(165, 70, 9, 12)] },
     { key: 'face', group: 'face', views: ['front'], shapes: [E(200, 94, 34, 38)] },
+    { key: 'jaw', pair: true, group: 'face', views: ['front'], shapes: [P([166, 96], [174, 100], [184, 114], [192, 126], [194, 131], [186, 130], [178, 123], [171, 113], [167, 104])] },
+    { key: 'chin', group: 'face', views: ['front'], shapes: [E(200, 127, 11, 7)] },
   ];
 
   const NAMES = {
@@ -54,6 +58,10 @@
     hand: { front: 'palm', back: 'back of hand' },
     head: { front: 'Head / forehead', back: 'Back of head' },
     face: { front: 'Face' },
+    ear: { front: 'ear', back: 'ear' },
+    temple: { front: 'temple' },
+    jaw: { front: 'jaw' },
+    chin: { front: 'Chin' },
   };
   const GROUP_NAMES = {
     head: 'Head', face: 'Face', neck: 'Neck', shoulders: 'Shoulders', arms: 'Arms', hands: 'Hands',
@@ -62,7 +70,7 @@
   const VIEW_NAMES = { front: 'Front', back: 'Back' };
   // Region codes used in the exchange format (unique together with the view). Paired parts get left_/right_ prefix.
   const CODES = {
-    head: { front: 'head', back: 'back_of_head' }, face: { front: 'face' }, neck: { front: 'neck', back: 'back_of_neck' },
+    head: { front: 'head', back: 'back_of_head' }, face: { front: 'face' }, chin: { front: 'chin' }, neck: { front: 'neck', back: 'back_of_neck' },
     chest: { front: 'chest', back: 'upper_back' }, abdomen: { front: 'abdomen', back: 'lower_back' }, pelvis: { front: 'pelvis', back: 'buttocks' },
   };
 

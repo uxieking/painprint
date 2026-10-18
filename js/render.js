@@ -56,6 +56,12 @@
     return '';
   }
 
+  /** Drawing color: the pain level (1–10) if set, otherwise the legacy pain-type color. */
+  function shapeColor(sh, typeById) {
+    if (sh.level) return PP.vocab.levelColor(sh.level);
+    return (typeById || ((id) => PP.store.typeById(id)))(sh.typeId).color;
+  }
+
   /** All markings for one view. Inactive entries can be dimmed; the active one is drawn on top. */
   function marksSVG(view, entries, opts = {}) {
     const typeById = opts.typeById || ((id) => PP.store.typeById(id));
@@ -64,7 +70,7 @@
     let out = '';
     for (const e of ordered) {
       const op = opts.activeId && opts.dimInactive && e.id !== opts.activeId ? 0.45 : 1;
-      for (const sh of e.shapes) if (sh.view === view) out += shapeSVG(sh, typeById(sh.typeId).color, op);
+      for (const sh of e.shapes) if (sh.view === view) out += shapeSVG(sh, shapeColor(sh, typeById), op);
     }
     return out;
   }
@@ -73,5 +79,5 @@
     return `<g class="badge"><circle cx="${r2(x)}" cy="${r2(y)}" r="${r2(r)}" fill="#111827" stroke="#fff" stroke-width="${r2(r * 0.18)}"/><text x="${r2(x)}" y="${r2(y)}" font-size="${r2(r * 1.15)}" fill="#fff" text-anchor="middle" dominant-baseline="central" font-weight="700" font-family="system-ui,sans-serif">${n}</text></g>`;
   }
 
-  PP.render = { shapeSVG, marksSVG, badgeSVG, arrowParts };
+  PP.render = { shapeSVG, shapeColor, marksSVG, badgeSVG, arrowParts };
 })();

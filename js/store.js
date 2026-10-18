@@ -22,6 +22,9 @@
     return {
       id: uid('e'), title: '', intensity: 5, sensations: [], duration: '', triggers: [], associatedSymptoms: [],
       dailyImpact: [], symptomNotes: '', onset: '', notes: '', visible: true, createdAt: t, updatedAt: t, shapes: [],
+      occurredAt: t, // when this pain episode happened (the diary time), editable by the patient
+      context: '', // why / what the patient was doing
+      intensityManual: false, // until the user moves the slider, intensity follows the highest level drawn
     };
   }
 
@@ -30,7 +33,7 @@
       app: 'PAINPRINT', schemaVersion: SCHEMA_VERSION,
       patient: { name: '', birthDate: '', notes: '' },
       painTypes: DEFAULT_TYPES.map((t) => ({ ...t })),
-      entries: [], activeEntryId: null, createdAt: nowISO(), updatedAt: nowISO(),
+      entries: [], activeEntryId: null, checkins: [], createdAt: nowISO(), updatedAt: nowISO(),
     };
   }
 
@@ -42,9 +45,10 @@
     out.patient = { ...base.patient, ...(d.patient || {}) };
     if (!Array.isArray(out.painTypes) || !out.painTypes.length) out.painTypes = base.painTypes;
     out.entries = d.entries.map((e) => ({
-      ...entryBase(), ...e,
+      ...entryBase(), ...e, occurredAt: e.occurredAt || e.createdAt || nowISO(),
       shapes: Array.isArray(e.shapes) ? e.shapes.filter((s) => s && Array.isArray(s.points) && s.points.length && PP.body.OFF[s.view] !== undefined) : [],
     }));
+    out.checkins = Array.isArray(d.checkins) ? d.checkins.filter((c) => c && c.date && c.mood) : [];
     if (!out.entries.some((e) => e.id === out.activeEntryId)) out.activeEntryId = out.entries.length ? out.entries[0].id : null;
     return out;
   }
@@ -96,6 +100,7 @@
       const snap = JSON.parse(json);
       const cur = new Map(this.data.entries.map((e) => [e.id, e]));
       this.data.entries = snap.entries.map((se) => { const ce = cur.get(se.id); return ce ? { ...ce, shapes: se.shapes } : se; });
+      this.data.entries.forEach((e) => this.syncIntensity(e));
       const ids = this.data.entries.map((e) => e.id);
       this.data.activeEntryId = ids.includes(this.data.activeEntryId) ? this.data.activeEntryId
         : ids.includes(snap.activeEntryId) ? snap.activeEntryId : ids[0] || null;
@@ -134,6 +139,26 @@
       return e;
     },
     touch(entry) { entry.updatedAt = nowISO(); },
+    /** Keep the entry's overall intensity in step with the drawing until the user sets it by hand. */
+    syncIntensity(entry) {
+      if (entry.intensityManual) return;
+      const max = Math.max(0, ...entry.shapes.map((s) => s.level || 0));
+      if (max) entry.intensity = max;
+    },
+
+    /** One "How are you today?" check-in per day (the latest answer wins). */
+    setCheckin(mood) {
+      const d = new Date();
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      this.data.checkins = this.data.checkins.filter((c) => c.date !== date);
+      this.data.checkins.push({ date, mood, at: nowISO() });
+      this.save();
+    },
+    todayCheckin() {
+      const d = new Date();
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return this.data.checkins.find((c) => c.date === date) || null;
+    },
 
     exportJSON() {
       const B = PP.body;
@@ -197,3 +222,6 @@
 
   PP.store = store;
 })();
+
+// Load saved data as soon as the store exists (all UI modules read PP.store.data).
+window.PP.store.load();
